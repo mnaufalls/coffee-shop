@@ -11,6 +11,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { useCartStore } from "@/store/cart-store";
+import CheckoutForm from "@/components/customer/checkout-form";
 import Image from "next/image";
 
 function formatPrice(price: string) {
@@ -21,7 +22,13 @@ function formatPrice(price: string) {
   }).format(Number(price));
 }
 
-export default function CartContent() {
+type CartContentProps = {
+  isAuthenticated: boolean;
+};
+
+export default function CartContent({
+  isAuthenticated,
+}: CartContentProps) {
   const items = useCartStore((state) => state.items);
   const updateQuantity = useCartStore(
     (state) => state.updateQuantity,
@@ -194,25 +201,19 @@ export default function CartContent() {
               Order Summary
             </h2>
 
-            <div className="my-6 border-y-2 border-black py-5">
-              <div className="flex justify-between gap-4 font-bold">
-                <span>Subtotal</span>
-                <span>{formatPrice(String(subtotal))}</span>
-              </div>
+            <div className="my-6 border-t-2 border-black pt-5">
+  <div className="flex justify-between gap-4 font-bold">
+    <span>Subtotal</span>
+    <span>{formatPrice(String(subtotal))}</span>
+  </div>
 
-              <p className="mt-3 text-xs font-medium text-zinc-700">
-                Tax and final total will be calculated by the
-                backend during checkout.
-              </p>
-            </div>
+  <p className="mt-3 text-xs font-medium text-zinc-700">
+    Tax and final total will be calculated by the backend
+    during checkout.
+  </p>
+</div>
 
-            <button
-              type="button"
-              className="flex w-full items-center justify-center gap-2 border-2 border-black bg-black px-5 py-4 font-black text-white shadow-[5px_5px_0_0_#fff] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
-            >
-              CHECKOUT
-              <ArrowRight size={20} weight="bold" />
-            </button>
+<CheckoutForm isAuthenticated={isAuthenticated} />
           </aside>
         </div>
       </div>
