@@ -10,6 +10,7 @@ import {
 } from "@phosphor-icons/react";
 import { useState } from "react";
 import Image from "next/image";
+import { useCartStore } from "@/store/cart-store";
 
 type Product = {
   id: string;
@@ -41,7 +42,7 @@ export default function ProductDetail({
   product,
 }: ProductDetailProps) {
   const [quantity, setQuantity] = useState(1);
-
+  const addItem = useCartStore((state) => state.addItem);
   const isOutOfStock = product.stock <= 0;
 
   function decreaseQuantity() {
@@ -159,13 +160,14 @@ export default function ProductDetail({
                 </div>
 
                 <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    className="flex items-center justify-center gap-2 border-2 border-black bg-yellow-300 px-5 py-4 font-black shadow-[5px_5px_0_0_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
-                  >
-                    <ShoppingBag size={21} weight="bold" />
-                    ADD TO CART
-                  </button>
+                 <button
+  type="button"
+  onClick={() => addItem(product, quantity)}
+  className="flex items-center justify-center gap-2 border-2 border-black bg-yellow-300 px-5 py-4 font-black shadow-[5px_5px_0_0_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
+>
+  <ShoppingBag size={21} weight="bold" />
+  ADD TO CART
+</button>
 
                   <button
                     type="button"
