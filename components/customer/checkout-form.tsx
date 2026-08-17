@@ -24,6 +24,12 @@ export default function CheckoutForm({
   const items = useCartStore((state) => state.items);
   const [isSubmitting, setIsSubmitting] = useState(false);
 const [errorMessage, setErrorMessage] = useState<string | null>(null);
+const clearCart = useCartStore((state) => state.clearCart);
+const subtotal = items.reduce(
+  (total, item) =>
+    total + Number(item.product.price) * item.quantity,
+  0,
+);
 
   if (!showCheckout) {
     return (
@@ -120,10 +126,12 @@ onSubmit={async (event) => {
 
     const orderId = orderResult.data?.order?.id;
 
-    if (!orderId) {
-      setErrorMessage("Order ID was not returned by the server.");
-      return;
-    }
+if (!orderId) {
+  setErrorMessage("Order ID was not returned by the server.");
+  return;
+}
+
+clearCart();
 
     // 2. Generate Midtrans Snap token
     const paymentResponse = await fetch(
@@ -289,18 +297,22 @@ onSubmit={async (event) => {
       </section>
 
       {/* Total */}
-      <section className="border-y-2 border-black py-5">
-        <div className="flex items-center justify-between gap-4">
-          <span className="font-black uppercase">
-            Subtotal
-          </span> 
-        </div>
+<section className="border-y-2 border-black py-5">
+  <div className="flex items-center justify-between gap-4">
+    <span className="font-black uppercase">
+      Subtotal
+    </span>
 
-        <p className="mt-3 text-xs font-medium text-zinc-600">
-          Final subtotal, tax, and total will be calculated
-          again by the server when the order is created.
-        </p>
-      </section>
+    <span className="font-black">
+      {formatPrice(String(subtotal))}
+    </span>
+  </div>
+
+  <p className="mt-3 text-xs font-medium text-zinc-600">
+    Tax and final total will be calculated again by the
+    server when the order is created.
+  </p>
+</section>
 
 {errorMessage && (
   <div
