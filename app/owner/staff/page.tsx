@@ -62,8 +62,8 @@ export default function OwnerStaffPage() {
         const json = await res.json();
         if (cancelled) return;
         if (!res.ok || !json.success) throw new Error(json.message ?? "Failed to fetch staff");
-        setStaff(json.data.staff ?? json.data.users ?? []);
-        setMeta(json.data.meta);
+        setStaff(json.data ?? []);
+        setMeta(json.meta);
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : "Failed to fetch staff");

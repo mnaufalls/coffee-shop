@@ -79,11 +79,11 @@ export default function POSPage() {
 
         if (cancelled) return;
 
-        if (prodResult.success) {
-          setProducts(prodResult.data.products);
+        if (prodResult.data) {
+          setProducts(prodResult.data);
         }
-        if (catResult.success) {
-          setCategories(catResult.data.categories);
+        if (catResult.data) {
+          setCategories(catResult.data);
         }
         if (profResult.success) {
           setProfile({
@@ -232,8 +232,8 @@ export default function POSPage() {
         },
       );
       const prodResult = await prodRes.json();
-      if (prodResult.success) {
-        setProducts(prodResult.data.products);
+      if (prodResult.data) {
+        setProducts(prodResult.data);
       }
     } catch (err) {
       setError(

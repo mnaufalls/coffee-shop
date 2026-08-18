@@ -46,7 +46,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: result,
+      data: result.data,
+      meta: result.meta,
     });
   } catch (error) {
     console.error("Get vouchers error:", error);

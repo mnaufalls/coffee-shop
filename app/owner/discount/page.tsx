@@ -76,8 +76,8 @@ export default function OwnerDiscountPage() {
         const json = await res.json();
         if (cancelled) return;
         if (!res.ok || !json.success) throw new Error(json.message ?? "Failed to fetch vouchers");
-        setVouchers(json.data.vouchers ?? []);
-        setMeta(json.data.meta);
+        setVouchers(json.data ?? []);
+        setMeta(json.meta);
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : "Failed to fetch vouchers");

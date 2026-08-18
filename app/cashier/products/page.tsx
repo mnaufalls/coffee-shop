@@ -85,10 +85,10 @@ export default function CashierProductsPage() {
       const prodResult = await prodRes.json();
       const catResult = await catRes.json();
 
-      if (prodResult.success)
-        setProducts(prodResult.data.products);
-      if (catResult.success)
-        setCategories(catResult.data.categories);
+      if (prodResult.data)
+        setProducts(prodResult.data);
+      if (catResult.data)
+        setCategories(catResult.data);
     } catch {
       setError("Failed to load data");
     } finally {

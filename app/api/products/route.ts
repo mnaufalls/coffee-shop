@@ -17,8 +17,10 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
 
-    const page = Number(searchParams.get("page")) || 1;
-    const limit = Number(searchParams.get("limit")) || 10;
+    const pageParam = searchParams.get("page");
+    const limitParam = searchParams.get("limit");
+    const page = pageParam ? Number(pageParam) || 1 : null;
+    const limit = limitParam ? Number(limitParam) || 20 : 20;
     const categoryId = searchParams.get("categoryId") ?? undefined;
     const search = searchParams.get("search") ?? undefined;
 
@@ -27,17 +29,24 @@ export async function GET(request: NextRequest) {
       search,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        products,
+    if (page) {
+      const start = (page - 1) * limit;
+      const paginatedProducts = products.slice(start, start + limit);
+
+      return NextResponse.json({
+        success: true,
+        data: paginatedProducts,
         meta: {
           page,
           limit,
           total: products.length,
           totalPages: Math.ceil(products.length / limit),
         },
-      },
+      });
+    }
+
+    return NextResponse.json({
+      data: products,
     });
   } catch {
     return NextResponse.json(

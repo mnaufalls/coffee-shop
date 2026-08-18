@@ -13,8 +13,7 @@ export async function GET() {
     const categories = await getCategories();
 
     return NextResponse.json({
-      success: true,
-      data: { categories },
+      data: categories,
     });
   } catch {
     return NextResponse.json(
