@@ -118,7 +118,7 @@ export default function CartContent({
 
                 <div>
                   <p className="text-xs font-black uppercase text-orange-600">
-                    {item.product.category.name}
+                    {item.product.category?.name}
                   </p>
 
                   <h2 className="mt-1 text-xl font-black uppercase">

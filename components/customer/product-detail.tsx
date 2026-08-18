@@ -103,7 +103,7 @@ export default function ProductDetail({
           {/* Product Information */}
           <div className="flex flex-col p-6 sm:p-10">
             <p className="text-sm font-black uppercase text-orange-600">
-              {product.category.name}
+              {product.category?.name}
             </p>
 
             <h1 className="mt-2 text-4xl font-black uppercase leading-tight sm:text-5xl">

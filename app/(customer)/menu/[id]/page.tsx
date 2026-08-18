@@ -39,9 +39,9 @@ async function getProduct(id: string): Promise<Product | null> {
     throw new Error("Failed to fetch product");
   }
 
-  const result: { data: Product } = await response.json();
+  const result = await response.json();
 
-  return result.data;
+  return result.data.product;
 }
 
 export default async function ProductDetailPage({
