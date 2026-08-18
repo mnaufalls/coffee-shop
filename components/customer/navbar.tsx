@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
+  ClipboardText,
   House,
   ShoppingBag,
   UserCircle,
@@ -55,6 +56,14 @@ export default function CustomerNavbar() {
           >
             <ShoppingBag size={18} weight="bold" />
             Menu
+          </Link>
+
+          <Link
+            href="/orders"
+            className="flex items-center gap-2 font-[family-name:var(--font-dm-sans)] text-sm font-bold transition-transform hover:-translate-y-0.5"
+          >
+            <ClipboardText size={18} weight="bold" />
+            Orders
           </Link>
         </nav>
 
@@ -136,6 +145,19 @@ export default function CustomerNavbar() {
               <span className="flex items-center gap-3">
                 <ShoppingBag size={20} weight="bold" />
                 Menu
+              </span>
+
+              <ArrowRight size={20} weight="bold" />
+            </Link>
+
+            <Link
+              href="/orders"
+              onClick={closeMobileMenu}
+              className="flex items-center justify-between border-2 border-black bg-pink-300 px-4 py-3 font-[family-name:var(--font-dm-sans)] font-bold shadow-[4px_4px_0_0_#000] transition-all active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+            >
+              <span className="flex items-center gap-3">
+                <ClipboardText size={20} weight="bold" />
+                Orders
               </span>
 
               <ArrowRight size={20} weight="bold" />

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
@@ -43,6 +44,7 @@ export default function ProductDetail({
 }: ProductDetailProps) {
   const [quantity, setQuantity] = useState(1);
   const addItem = useCartStore((state) => state.addItem);
+  const router = useRouter();
   const isOutOfStock = product.stock <= 0;
 
   function decreaseQuantity() {
@@ -53,6 +55,11 @@ export default function ProductDetail({
     setQuantity((current) =>
       Math.min(product.stock, current + 1),
     );
+  }
+
+  function handleBuyNow() {
+    addItem(product, quantity);
+    router.push("/cart");
   }
 
   return (
@@ -71,12 +78,12 @@ export default function ProductDetail({
           <div className="relative flex aspect-square items-center justify-center border-b-2 border-black bg-zinc-100 lg:border-b-0 lg:border-r-2">
             {product.imageUrl ? (
               <Image
-  src={product.imageUrl}
-  alt={product.name}
-  fill
-  sizes="(max-width: 1024px) 100vw, 50vw"
-  className="object-cover"
-/>
+                src={product.imageUrl}
+                alt={product.name}
+                fill
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover"
+              />
             ) : (
               <ShoppingBag
                 size={150}
@@ -150,7 +157,9 @@ export default function ProductDetail({
                     <button
                       type="button"
                       onClick={increaseQuantity}
-                      disabled={quantity >= product.stock}
+                      disabled={
+                        quantity >= product.stock
+                      }
                       aria-label="Increase quantity"
                       className="flex h-12 w-12 items-center justify-center border-l-2 border-black bg-white font-black transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
                     >
@@ -160,21 +169,30 @@ export default function ProductDetail({
                 </div>
 
                 <div className="mt-8 grid gap-4 sm:grid-cols-2">
-                 <button
-  type="button"
-  onClick={() => addItem(product, quantity)}
-  className="flex items-center justify-center gap-2 border-2 border-black bg-yellow-300 px-5 py-4 font-black shadow-[5px_5px_0_0_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
->
-  <ShoppingBag size={21} weight="bold" />
-  ADD TO CART
-</button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      addItem(product, quantity)
+                    }
+                    className="flex items-center justify-center gap-2 border-2 border-black bg-yellow-300 px-5 py-4 font-black shadow-[5px_5px_0_0_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
+                  >
+                    <ShoppingBag
+                      size={21}
+                      weight="bold"
+                    />
+                    ADD TO CART
+                  </button>
 
                   <button
                     type="button"
+                    onClick={handleBuyNow}
                     className="flex items-center justify-center gap-2 border-2 border-black bg-black px-5 py-4 font-black text-white shadow-[5px_5px_0_0_#f59e0b] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
                   >
                     BUY NOW
-                    <ArrowRight size={21} weight="bold" />
+                    <ArrowRight
+                      size={21}
+                      weight="bold"
+                    />
                   </button>
                 </div>
               </>
