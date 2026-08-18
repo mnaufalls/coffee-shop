@@ -2,48 +2,62 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { getProducts, createProduct } from "@/service/product.service";
+import { getStaff, createStaff } from "@/service/staff.service";
 
-const createProductSchema = z.object({
+const createStaffSchema = z.object({
   name: z.string().min(1),
-  description: z.string().min(1),
-  price: z.number().int().min(0),
-  stock: z.number().int().min(0),
-  categoryId: z.string().min(1),
-  imageUrl: z.string().optional(),
+  email: z.string().email(),
+  phoneNumber: z.string().min(8),
+  password: z.string().min(8),
+  role: z.enum(["admin"]).default("admin"),
 });
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getCurrentUser();
+
+    if (!user) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Authentication required",
+        },
+        { status: 401 },
+      );
+    }
+
+    if (user.role !== "super_admin") {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Forbidden",
+        },
+        { status: 403 },
+      );
+    }
+
     const searchParams = request.nextUrl.searchParams;
 
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 10;
-    const categoryId = searchParams.get("categoryId") ?? undefined;
     const search = searchParams.get("search") ?? undefined;
+    const isActiveParam = searchParams.get("isActive");
+    const isActive =
+      isActiveParam !== null ? isActiveParam === "true" : undefined;
 
-    const products = await getProducts({
-      categoryId,
-      search,
-    });
+    const result = await getStaff({ page, limit, search, isActive });
 
     return NextResponse.json({
       success: true,
-      data: {
-        products,
-        meta: {
-          page,
-          limit,
-          total: products.length,
-          totalPages: Math.ceil(products.length / limit),
-        },
-      },
+      data: result,
     });
-  } catch {
+  } catch (error) {
+    console.error("Get staff error:", error);
+
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to fetch products",
+        message: "Failed to fetch staff",
       },
       { status: 500 },
     );
@@ -64,7 +78,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (user.role !== "admin" && user.role !== "super_admin") {
+    if (user.role !== "super_admin") {
       return NextResponse.json(
         {
           success: false,
@@ -76,7 +90,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    const result = createProductSchema.safeParse(body);
+    const result = createStaffSchema.safeParse(body);
 
     if (!result.success) {
       return NextResponse.json(
@@ -89,33 +103,33 @@ export async function POST(request: Request) {
       );
     }
 
-    const product = await createProduct(result.data);
+    const staff = await createStaff(result.data);
 
     return NextResponse.json(
       {
         success: true,
-        message: "Product created successfully",
-        data: { product },
+        message: "Staff created successfully",
+        data: { staff },
       },
       { status: 201 },
     );
   } catch (error) {
-    if (error instanceof Error && error.message === "Category not found") {
+    if (error instanceof Error && error.message === "Email already registered") {
       return NextResponse.json(
         {
           success: false,
           message: error.message,
         },
-        { status: 404 },
+        { status: 409 },
       );
     }
 
-    console.error("Create product error:", error);
+    console.error("Create staff error:", error);
 
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to create product",
+        message: "Failed to create staff",
       },
       { status: 500 },
     );

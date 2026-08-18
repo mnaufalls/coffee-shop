@@ -55,7 +55,8 @@ export async function POST(request: Request) {
   } catch (error) {
     if (
       error instanceof Error &&
-      error.message === "Invalid email or password"
+      (error.message === "Invalid email or password" ||
+        error.message === "Account is deactivated")
     ) {
       return NextResponse.json(
         {

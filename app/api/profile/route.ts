@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { prisma } from "@/lib/prisma";
+import { updateProfile } from "@/service/auth.service";
+
+const updateProfileSchema = z.object({
+  name: z.string().min(1).optional(),
+  phoneNumber: z.string().min(1).optional(),
+});
 
 export async function GET() {
   try {
@@ -61,6 +68,64 @@ export async function GET() {
       {
         success: false,
         message: "Failed to get profile",
+      },
+      { status: 500 },
+    );
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const currentUser = await getCurrentUser();
+
+    if (!currentUser) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Authentication required",
+        },
+        { status: 401 },
+      );
+    }
+
+    const body = await request.json();
+
+    const result = updateProfileSchema.safeParse(body);
+
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Validation failed",
+          errors: result.error.flatten().fieldErrors,
+        },
+        { status: 400 },
+      );
+    }
+
+    const user = await updateProfile(currentUser.userId, result.data);
+
+    return NextResponse.json({
+      success: true,
+      message: "Profile updated successfully",
+      data: {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phoneNumber: user.phoneNumber,
+          role: user.role,
+          createdAt: user.createdAt,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Update profile error:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Failed to update profile",
       },
       { status: 500 },
     );

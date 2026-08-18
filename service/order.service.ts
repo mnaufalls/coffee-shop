@@ -1,13 +1,25 @@
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 
-type CreateOrderInput = {
-  userId: string;
-  orderType: "dine_in" | "takeaway";
-  items: {
-    productId: string;
-    quantity: number;
-  }[];
-};
+const createOrderSchema = z.object({
+  userId: z.string().min(1),
+  orderType: z.enum(["dine_in", "takeaway"]),
+  items: z
+    .array(
+      z.object({
+        productId: z.string().min(1),
+        quantity: z.number().int().positive(),
+      }),
+    )
+    .min(1, "At least one item is required"),
+  cashierId: z.string().optional(),
+  cashierName: z.string().optional(),
+  voucherCode: z.string().optional(),
+  discountAmount: z.number().min(0).optional(),
+  totalAmount: z.number().min(0).optional(),
+});
+
+type CreateOrderInput = z.infer<typeof createOrderSchema>;
 
 const TAX_PERCENTAGE = 11;
 
@@ -29,13 +41,11 @@ function calculateTax(subtotalCents: number) {
   );
 }
 
-export async function createOrder({
-  userId,
-  orderType,
-  items,
-}: CreateOrderInput) {
+export async function createOrder(input: CreateOrderInput) {
+  const parsed = createOrderSchema.parse(input);
+
   return prisma.$transaction(async (tx) => {
-    const productIds = items.map((item) => item.productId);
+    const productIds = parsed.items.map((item) => item.productId);
 
     const products = await tx.product.findMany({
       where: {
@@ -56,7 +66,7 @@ export async function createOrder({
     );
 
     // Validate product existence and stock
-    for (const item of items) {
+    for (const item of parsed.items) {
       const product = productMap.get(item.productId);
 
       if (!product) {
@@ -74,7 +84,7 @@ export async function createOrder({
 
     let subtotalCents = 0;
 
-    const orderDetails = items.map((item) => {
+    const orderDetails = parsed.items.map((item) => {
       const product = productMap.get(item.productId)!;
 
       const priceCents = decimalToCents(product.price);
@@ -93,44 +103,61 @@ export async function createOrder({
       };
     });
 
-    const discountCents = 0;
-    const taxCents = calculateTax(subtotalCents);
+    let discountCents = 0;
+    let voucherCode: string | null = null;
 
-    const totalCents =
-      subtotalCents - discountCents + taxCents;
+    // Handle voucher
+    if (parsed.voucherCode) {
+      const voucher = await tx.voucher.findUnique({
+        where: { code: parsed.voucherCode },
+      });
 
-    // Reduce stock inside the same transaction.
-    for (const item of items) {
-      const product = productMap.get(item.productId)!;
+      if (!voucher) {
+        throw new Error("Voucher not found");
+      }
 
-      const updatedProduct =
-        await tx.product.updateMany({
-          where: {
-            id: product.id,
-            stock: {
-              gte: item.quantity,
-            },
-          },
-          data: {
-            stock: {
-              decrement: item.quantity,
-            },
-          },
-        });
+      if (!voucher.isActive) {
+        throw new Error("Voucher is not active");
+      }
 
-      if (updatedProduct.count !== 1) {
+      if (voucher.usageCount >= voucher.usageLimit) {
+        throw new Error("Voucher usage limit reached");
+      }
+
+      if (subtotalCents < voucher.minPurchaseAmount * 100) {
         throw new Error(
-          `Insufficient stock for product: ${product.name}`,
+          `Minimum purchase amount is ${centsToDecimal(voucher.minPurchaseAmount * 100)}`,
         );
       }
+
+      discountCents = voucher.discountAmount * 100;
+      voucherCode = voucher.code;
+    }
+
+    // Use pre-calculated discount if provided
+    if (parsed.discountAmount !== undefined) {
+      discountCents = Math.round(parsed.discountAmount * 100);
+    }
+
+    const taxCents = calculateTax(subtotalCents);
+
+    let totalCents =
+      subtotalCents - discountCents + taxCents;
+
+    // Use pre-calculated total if provided
+    if (parsed.totalAmount !== undefined) {
+      totalCents = Math.round(parsed.totalAmount * 100);
     }
 
     const order = await tx.order.create({
       data: {
-        userId,
-        orderType,
+        userId: parsed.userId,
+        cashierId: parsed.cashierId ?? null,
+        cashierName: parsed.cashierName ?? null,
+        orderType: parsed.orderType,
         subtotal: centsToDecimal(subtotalCents),
         discountAmount: centsToDecimal(discountCents),
+        voucherCode,
         taxPercentage: TAX_PERCENTAGE.toFixed(2),
         taxAmount: centsToDecimal(taxCents),
         totalAmount: centsToDecimal(totalCents),

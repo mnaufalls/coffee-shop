@@ -99,11 +99,11 @@ function getTransactionStatus(
 
 function getOrderStatus(
   transactionStatus: string,
-): "pending" | "processing" | "cancelled" | "refunded" | null {
+): "pending" | "completed" | "cancelled" | null {
   switch (transactionStatus) {
     case "settlement":
     case "capture":
-      return "processing";
+      return "completed";
 
     case "challenge":
       return "pending";
@@ -114,7 +114,7 @@ function getOrderStatus(
       return "cancelled";
 
     case "refund":
-      return "refunded";
+      return "cancelled";
 
     case "pending":
       return "pending";
@@ -185,6 +185,37 @@ export async function POST(request: Request) {
       );
     }
 
+    const order = await prisma.order.findUnique({
+      where: { id: transaction.orderId },
+      include: {
+        orderDetails: true,
+      },
+    });
+
+    if (!order) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Order not found",
+        },
+        { status: 404 },
+      );
+    }
+
+    if (order.status === "completed") {
+      return NextResponse.json({
+        success: true,
+        message: "Order already processed",
+      });
+    }
+
+    if (order.status === "cancelled" && orderStatus !== "completed") {
+      return NextResponse.json({
+        success: true,
+        message: "Order already cancelled",
+      });
+    }
+
     await prisma.$transaction(async (tx) => {
       await tx.transaction.update({
         where: {
@@ -209,6 +240,36 @@ export async function POST(request: Request) {
             status: orderStatus,
           },
         });
+      }
+
+      if (orderStatus === "completed") {
+        for (const detail of order.orderDetails) {
+          await tx.product.update({
+            where: { id: detail.productId },
+            data: {
+              stock: {
+                decrement: detail.quantity,
+              },
+            },
+          });
+        }
+
+        if (order.voucherCode) {
+          const voucher = await tx.voucher.findUnique({
+            where: { code: order.voucherCode },
+          });
+
+          if (voucher && voucher.usageCount < voucher.usageLimit) {
+            await tx.voucher.update({
+              where: { id: voucher.id },
+              data: {
+                usageCount: {
+                  increment: 1,
+                },
+              },
+            });
+          }
+        }
       }
     });
 

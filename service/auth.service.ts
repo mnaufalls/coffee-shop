@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { UserRole } from "@/app/generated/prisma/enums";
 
@@ -23,6 +24,16 @@ type LoginInput = {
   email: string;
   password: string;
 };
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "New password must be at least 6 characters"),
+});
+
+const updateProfileSchema = z.object({
+  name: z.string().min(1).optional(),
+  phoneNumber: z.string().min(1).optional(),
+});
 
 export async function registerUser(input: RegisterInput) {
   const existingUser = await prisma.user.findUnique({
@@ -69,6 +80,10 @@ export async function loginUser(input: LoginInput) {
     throw new Error("Invalid email or password");
   }
 
+  if (!user.isActive) {
+    throw new Error("Account is deactivated");
+  }
+
   const passwordValid = await comparePassword(
     input.password,
     user.passwordHash,
@@ -97,4 +112,68 @@ export async function loginUser(input: LoginInput) {
     accessToken,
     refreshToken,
   };
+}
+
+export async function changePassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+) {
+  const parsed = changePasswordSchema.parse({ currentPassword, newPassword });
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const passwordValid = await comparePassword(
+    parsed.currentPassword,
+    user.passwordHash,
+  );
+
+  if (!passwordValid) {
+    throw new Error("Current password is incorrect");
+  }
+
+  const passwordHash = await hashPassword(parsed.newPassword);
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash },
+  });
+
+  return { message: "Password changed successfully" };
+}
+
+export async function updateProfile(
+  userId: string,
+  input: { name?: string; phoneNumber?: string },
+) {
+  const parsed = updateProfileSchema.parse(input);
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: parsed,
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phoneNumber: true,
+      role: true,
+      createdAt: true,
+    },
+  });
+
+  return updated;
 }

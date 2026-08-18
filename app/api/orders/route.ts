@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/current-user";
@@ -27,6 +27,9 @@ const createOrderSchema = z.object({
         message: "Duplicate products are not allowed",
       },
     ),
+  cashierId: z.string().optional(),
+  cashierName: z.string().optional(),
+  voucherCode: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -62,6 +65,9 @@ export async function POST(request: Request) {
       userId: user.userId,
       orderType: result.data.orderType,
       items: result.data.items,
+      cashierId: result.data.cashierId,
+      cashierName: result.data.cashierName,
+      voucherCode: result.data.voucherCode,
     });
 
     return NextResponse.json(
@@ -138,7 +144,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
 
@@ -152,17 +158,31 @@ export async function GET() {
       );
     }
 
-    const orders = await prisma.order.findMany({
-      where: {
-        userId: user.userId,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      include: {
-        orderDetails: true,
-      },
-    });
+    const searchParams = request.nextUrl.searchParams;
+
+    const page = Number(searchParams.get("page")) || 1;
+    const limit = Number(searchParams.get("limit")) || 10;
+
+    const [orders, total] = await Promise.all([
+      prisma.order.findMany({
+        where: {
+          userId: user.userId,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          orderDetails: true,
+        },
+      }),
+      prisma.order.count({
+        where: {
+          userId: user.userId,
+        },
+      }),
+    ]);
 
     return NextResponse.json({
       success: true,
@@ -192,6 +212,12 @@ export async function GET() {
             }),
           ),
         })),
+        meta: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
       },
     });
   } catch (error) {
