@@ -127,7 +127,6 @@ export async function PATCH(
           totalAmount:
             updatedOrder.totalAmount.toString(),
           status: updatedOrder.status,
-          refundReason: updatedOrder.refundReason,
           createdAt: updatedOrder.createdAt,
           updatedAt: updatedOrder.updatedAt,
 

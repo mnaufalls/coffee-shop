@@ -2,8 +2,7 @@ export type OrderStatus =
   | "pending"
   | "processing"
   | "completed"
-  | "cancelled"
-  | "refunded";
+  | "cancelled";
 
 export type OrderDetail = {
   id: string;
@@ -23,7 +22,6 @@ export type Order = {
   taxAmount: string;
   totalAmount: string;
   status: OrderStatus;
-  refundReason: string | null;
   createdAt: string;
   updatedAt: string;
   customer: {
@@ -55,7 +53,6 @@ const statusLabels: Record<OrderStatus, string> = {
   processing: "Processing",
   completed: "Completed",
   cancelled: "Cancelled",
-  refunded: "Refunded",
 };
 
 const statusClasses: Record<OrderStatus, string> = {
@@ -63,7 +60,6 @@ const statusClasses: Record<OrderStatus, string> = {
   processing: "bg-blue-300",
   completed: "bg-green-300",
   cancelled: "bg-red-300",
-  refunded: "bg-purple-300",
 };
 
 function formatRupiah(value: string) {
@@ -96,7 +92,7 @@ export default function OrderCard({
   onUpdateStatus,
   showActions = true,
 }: OrderCardProps) {
-const nextStatuses = getNextStatuses(order.status);
+  const nextStatuses = getNextStatuses(order.status);
 
   return (
     <article className="border-2 border-black bg-white p-5 shadow-[4px_4px_0_0_#000]">
@@ -121,7 +117,7 @@ const nextStatuses = getNextStatuses(order.status);
           </div>
 
           <p className="text-sm font-bold">
-            {order.customer?.name ?? "Unknown Customer"}
+            {order.customer?.name ?? "Walk-in Customer"}
           </p>
 
           <p className="text-xs text-zinc-600">
@@ -151,7 +147,7 @@ const nextStatuses = getNextStatuses(order.status);
             className="flex items-center justify-between text-sm"
           >
             <span className="font-medium">
-              {detail.quantity} × {detail.productName}
+              {detail.quantity} x {detail.productName}
             </span>
 
             <span className="font-bold">

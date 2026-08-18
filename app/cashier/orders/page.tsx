@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  CaretLeft,
+  CaretRight,
+} from "@phosphor-icons/react";
 
 import OrdersList from "@/components/cashier/orders-list";
 import type {
@@ -26,22 +30,27 @@ const filters: {
   { value: "cancelled", label: "Cancelled" },
 ];
 
+const PAGE_SIZE = 10;
+
 export default function CashierOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] =
     useState<FilterStatus>("all");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [updatingId, setUpdatingId] =
     useState<string | null>(null);
   const [error, setError] = useState("");
 
-  async function loadOrders() {
+  async function loadOrders(targetPage: number) {
     try {
       setError("");
+      setIsLoading(true);
 
       const response = await fetch(
-        "/api/admin/orders",
+        `/api/admin/orders?page=${targetPage}&limit=${PAGE_SIZE}`,
         {
           credentials: "include",
           cache: "no-store",
@@ -57,10 +66,11 @@ export default function CashierOrdersPage() {
       }
 
       setOrders(result.data.orders);
-    } catch (error) {
+      setTotalPages(result.data.meta.totalPages || 1);
+    } catch (err) {
       setError(
-        error instanceof Error
-          ? error.message
+        err instanceof Error
+          ? err.message
           : "Failed to fetch orders",
       );
     } finally {
@@ -69,50 +79,8 @@ export default function CashierOrdersPage() {
   }
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function fetchOrders() {
-      try {
-        const response = await fetch(
-          "/api/admin/orders",
-          {
-            credentials: "include",
-            cache: "no-store",
-          },
-        );
-
-        const result = await response.json();
-
-        if (cancelled) return;
-
-        if (!response.ok || !result.success) {
-          throw new Error(
-            result.message ?? "Failed to fetch orders",
-          );
-        }
-
-        setOrders(result.data.orders);
-      } catch (error) {
-        if (cancelled) return;
-
-        setError(
-          error instanceof Error
-            ? error.message
-            : "Failed to fetch orders",
-        );
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void fetchOrders();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    void loadOrders(page);
+  }, [page]);
 
   async function updateOrderStatus(
     orderId: string,
@@ -149,10 +117,10 @@ export default function CashierOrdersPage() {
             : order,
         ),
       );
-    } catch (error) {
+    } catch (err) {
       setError(
-        error instanceof Error
-          ? error.message
+        err instanceof Error
+          ? err.message
           : "Failed to update order",
       );
     } finally {
@@ -169,9 +137,7 @@ export default function CashierOrdersPage() {
         filter === "all" ||
         order.status === filter;
 
-      if (!normalizedSearch) {
-        return matchesStatus;
-      }
+      if (!normalizedSearch) return matchesStatus;
 
       const orderId = order.id.toLowerCase();
       const customerName =
@@ -187,10 +153,10 @@ export default function CashierOrdersPage() {
 
   async function handleRefresh() {
     setIsLoading(true);
-    await loadOrders();
+    await loadOrders(page);
   }
 
-  if (isLoading) {
+  if (isLoading && orders.length === 0) {
     return (
       <main className="mx-auto max-w-7xl p-6">
         <p className="font-bold">Loading orders...</p>
@@ -204,11 +170,9 @@ export default function CashierOrdersPage() {
         <p className="text-sm font-bold uppercase tracking-wide">
           Coffee Shop
         </p>
-
         <h1 className="mt-2 text-3xl font-black">
           Orders
         </h1>
-
         <p className="mt-2 text-sm text-zinc-600">
           Manage and process customer orders.
         </p>
@@ -224,16 +188,16 @@ export default function CashierOrdersPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap gap-2">
             {filters.map((item) => {
-              const active =
-                filter === item.value;
+              const active = filter === item.value;
 
               return (
                 <button
                   key={item.value}
                   type="button"
-                  onClick={() =>
-                    setFilter(item.value)
-                  }
+                  onClick={() => {
+                    setFilter(item.value);
+                    setPage(1);
+                  }}
                   className={`border-2 border-black px-4 py-2 text-sm font-black uppercase shadow-[3px_3px_0_0_#000] transition-all ${
                     active
                       ? "bg-yellow-300"
@@ -249,9 +213,10 @@ export default function CashierOrdersPage() {
           <button
             type="button"
             onClick={handleRefresh}
-            className="border-2 border-black bg-white px-4 py-2 text-sm font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
+            disabled={isLoading}
+            className="border-2 border-black bg-white px-4 py-2 text-sm font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Refresh
+            {isLoading ? "Loading..." : "Refresh"}
           </button>
         </div>
 
@@ -259,9 +224,10 @@ export default function CashierOrdersPage() {
           <input
             type="search"
             value={search}
-            onChange={(event) =>
-              setSearch(event.target.value)
-            }
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
             placeholder="Search order ID or customer..."
             className="w-full border-2 border-black bg-white px-4 py-3 text-sm font-medium outline-none focus:bg-orange-50"
           />
@@ -287,6 +253,38 @@ export default function CashierOrdersPage() {
         updatingId={updatingId}
         onUpdateStatus={updateOrderStatus}
       />
+
+      <section className="flex items-center justify-between border-2 border-black bg-white p-4 shadow-[4px_4px_0_0_#000]">
+        <button
+          type="button"
+          onClick={() =>
+            setPage((p) => Math.max(1, p - 1))
+          }
+          disabled={page <= 1 || isLoading}
+          className="flex items-center gap-2 border-2 border-black bg-white px-4 py-2 text-sm font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <CaretLeft size={16} weight="bold" />
+          Previous
+        </button>
+
+        <span className="text-sm font-black">
+          Page {page} of {totalPages}
+        </span>
+
+        <button
+          type="button"
+          onClick={() =>
+            setPage((p) =>
+              Math.min(totalPages, p + 1),
+            )
+          }
+          disabled={page >= totalPages || isLoading}
+          className="flex items-center gap-2 border-2 border-black bg-white px-4 py-2 text-sm font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Next
+          <CaretRight size={16} weight="bold" />
+        </button>
+      </section>
     </main>
   );
 }

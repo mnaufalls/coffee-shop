@@ -4,25 +4,17 @@ import Link from "next/link";
 import {
   ChartBar,
   ClipboardText,
+  CurrencyDollar,
+  Package,
   UserCircle,
 } from "@phosphor-icons/react";
 
 const navItems = [
-  {
-    href: "/cashier",
-    label: "Dashboard",
-    icon: ChartBar,
-  },
-  {
-    href: "/cashier/orders",
-    label: "Orders",
-    icon: ClipboardText,
-  },
-  {
-    href: "/cashier/profile",
-    label: "Profile",
-    icon: UserCircle,
-  },
+  { href: "/cashier", label: "Dashboard", icon: ChartBar },
+  { href: "/cashier/pos", label: "POS", icon: CurrencyDollar },
+  { href: "/cashier/products", label: "Products", icon: Package },
+  { href: "/cashier/orders", label: "Orders", icon: ClipboardText },
+  { href: "/cashier/profile", label: "Profile", icon: UserCircle },
 ];
 
 export default function CashierNavbar() {
