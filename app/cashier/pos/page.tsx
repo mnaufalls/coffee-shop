@@ -1,13 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import {
   Minus,
   Plus,
   TrashSimple,
   ShoppingCart,
-  CurrencyDollar,
-  WarningCircle,
 } from "@phosphor-icons/react";
 
 type Product = {
@@ -332,9 +331,12 @@ export default function POSPage() {
                 className="border-2 border-black bg-white p-3 text-left shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {product.imageUrl ? (
-                  <img
+                  <Image
                     src={product.imageUrl}
                     alt={product.name}
+                    width={80}
+                    height={80}
+                    unoptimized
                     className="mb-2 h-20 w-full object-cover border border-black"
                   />
                 ) : (

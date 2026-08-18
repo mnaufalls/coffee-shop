@@ -79,7 +79,47 @@ export default function CashierOrdersPage() {
   }
 
   useEffect(() => {
-    void loadOrders(page);
+    let cancelled = false;
+
+    async function fetchOrders() {
+      try {
+        setError("");
+        setIsLoading(true);
+
+        const response = await fetch(
+          `/api/admin/orders?page=${page}&limit=${PAGE_SIZE}`,
+          {
+            credentials: "include",
+            cache: "no-store",
+          },
+        );
+
+        const result = await response.json();
+
+        if (cancelled) return;
+
+        if (!response.ok || !result.success) {
+          throw new Error(
+            result.message ?? "Failed to fetch orders",
+          );
+        }
+
+        setOrders(result.data.orders);
+        setTotalPages(result.data.meta.totalPages || 1);
+      } catch (err) {
+        if (cancelled) return;
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to fetch orders",
+        );
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    void fetchOrders();
+    return () => { cancelled = true; };
   }, [page]);
 
   async function updateOrderStatus(

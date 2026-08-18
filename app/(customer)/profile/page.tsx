@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowClockwise,
   Clock,
   Envelope,
+  LockKey,
   Package,
   Phone,
+  SignOut,
   UserCircle,
 } from "@phosphor-icons/react";
 
@@ -36,7 +39,12 @@ type Order = {
   taxPercentage: string;
   taxAmount: string;
   totalAmount: string;
-  status: "pending" | "processing" | "completed" | "cancelled" | "refunded";
+  status:
+    | "pending"
+    | "processing"
+    | "completed"
+    | "cancelled"
+    | "refunded";
   createdAt: string;
   updatedAt: string;
   orderDetails: OrderDetail[];
@@ -80,58 +88,157 @@ function formatStatus(status: Order["status"]) {
 }
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const router = useRouter();
+  const [profile, setProfile] = useState<Profile | null>(
+    null,
+  );
   const [orders, setOrders] = useState<Order[]>([]);
-const [isLoading, setIsLoading] = useState(true);
-const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<
+    string | null
+  >(null);
 
+  const [currentPassword, setCurrentPassword] =
+    useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] =
+    useState("");
+  const [isChangingPassword, setIsChangingPassword] =
+    useState(false);
+  const [passwordSuccess, setPasswordSuccess] = useState<
+    string | null
+  >(null);
+  const [passwordError, setPasswordError] = useState<
+    string | null
+  >(null);
 
-useEffect(() => {
-  async function fetchProfile() {
-    setIsLoading(true);
-    setErrorMessage(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  useEffect(() => {
+    async function fetchProfile() {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      try {
+        const [profileResponse, ordersResponse] =
+          await Promise.all([
+            fetch("/api/profile", {
+              cache: "no-store",
+            }),
+            fetch("/api/orders", {
+              cache: "no-store",
+            }),
+          ]);
+
+        const profileResult =
+          await profileResponse.json();
+        const ordersResult = await ordersResponse.json();
+
+        if (!profileResponse.ok) {
+          throw new Error(
+            profileResult.message ??
+              "Failed to load profile",
+          );
+        }
+
+        if (!ordersResponse.ok) {
+          throw new Error(
+            ordersResult.message ??
+              "Failed to load orders",
+          );
+        }
+
+        setProfile(profileResult.data.user);
+        setOrders(ordersResult.data.orders);
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Failed to load profile",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchProfile();
+  }, []);
+
+  async function handleChangePassword(
+    event: React.FormEvent,
+  ) {
+    event.preventDefault();
+    setIsChangingPassword(true);
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match");
+      setIsChangingPassword(false);
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setPasswordError(
+        "New password must be at least 8 characters",
+      );
+      setIsChangingPassword(false);
+      return;
+    }
 
     try {
-      const [profileResponse, ordersResponse] =
-        await Promise.all([
-          fetch("/api/profile", {
-            cache: "no-store",
+      const response = await fetch(
+        "/api/profile/password",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            currentPassword,
+            newPassword,
           }),
-          fetch("/api/orders", {
-            cache: "no-store",
-          }),
-        ]);
+        },
+      );
 
-      const profileResult = await profileResponse.json();
-      const ordersResult = await ordersResponse.json();
+      const result = await response.json();
 
-      if (!profileResponse.ok) {
-        throw new Error(
-          profileResult.message ?? "Failed to load profile",
+      if (!response.ok) {
+        setPasswordError(
+          result.message ?? "Failed to change password",
         );
+        return;
       }
 
-      if (!ordersResponse.ok) {
-        throw new Error(
-          ordersResult.message ?? "Failed to load orders",
-        );
-      }
-
-      setProfile(profileResult.data.user);
-      setOrders(ordersResult.data.orders);
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Failed to load profile",
+      setPasswordSuccess(
+        result.message ?? "Password changed successfully",
+      );
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch {
+      setPasswordError(
+        "Unable to connect to the server. Please try again.",
       );
     } finally {
-      setIsLoading(false);
+      setIsChangingPassword(false);
     }
   }
 
-  fetchProfile();
-}, []);
+  async function handleLogout() {
+    setIsLoggingOut(true);
+
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+
+      router.push("/");
+      router.refresh();
+    } catch {
+      setIsLoggingOut(false);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -153,14 +260,14 @@ useEffect(() => {
             {errorMessage ?? "Profile not found"}
           </p>
 
-<button
-  type="button"
-  onClick={() => window.location.reload()}
-  className="mt-5 flex items-center gap-2 border-2 border-black bg-white px-4 py-3 font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
->
-  <ArrowClockwise size={20} weight="bold" />
-  RETRY
-</button>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-5 flex items-center gap-2 border-2 border-black bg-white px-4 py-3 font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
+          >
+            <ArrowClockwise size={20} weight="bold" />
+            RETRY
+          </button>
         </div>
       </main>
     );
@@ -325,7 +432,10 @@ useEffect(() => {
 
                     <div className="flex flex-wrap gap-2">
                       <span className="border-2 border-black bg-white px-3 py-2 text-xs font-black uppercase">
-                        {order.orderType.replace("_", " ")}
+                        {order.orderType.replace(
+                          "_",
+                          " ",
+                        )}
                       </span>
 
                       <span
@@ -340,27 +450,33 @@ useEffect(() => {
 
                   {/* Items */}
                   <div className="divide-y-2 divide-black">
-                    {order.orderDetails.map((detail) => (
-                      <div
-                        key={detail.id}
-                        className="flex items-start justify-between gap-4 p-5"
-                      >
-                        <div>
-                          <p className="font-black uppercase">
-                            {detail.productName}
-                          </p>
+                    {order.orderDetails.map(
+                      (detail) => (
+                        <div
+                          key={detail.id}
+                          className="flex items-start justify-between gap-4 p-5"
+                        >
+                          <div>
+                            <p className="font-black uppercase">
+                              {detail.productName}
+                            </p>
 
-                          <p className="mt-1 text-sm text-zinc-600">
-                            {detail.quantity} ×{" "}
-                            {formatPrice(detail.price)}
+                            <p className="mt-1 text-sm text-zinc-600">
+                              {detail.quantity} ×{" "}
+                              {formatPrice(
+                                detail.price,
+                              )}
+                            </p>
+                          </div>
+
+                          <p className="shrink-0 font-black">
+                            {formatPrice(
+                              detail.subtotal,
+                            )}
                           </p>
                         </div>
-
-                        <p className="shrink-0 font-black">
-                          {formatPrice(detail.subtotal)}
-                        </p>
-                      </div>
-                    ))}
+                      ),
+                    )}
                   </div>
 
                   {/* Total */}
@@ -393,6 +509,130 @@ useEffect(() => {
           )}
         </section>
       </div>
+
+      {/* Account Settings */}
+      <section className="mt-12 border-t-2 border-black pt-10">
+        <div className="grid gap-8 lg:grid-cols-[360px_1fr]">
+          {/* Password Change */}
+          <div className="h-fit border-2 border-black bg-white shadow-[6px_6px_0_0_#000]">
+            <div className="border-b-2 border-black bg-pink-300 p-6">
+              <div className="flex items-center gap-3">
+                <LockKey
+                  size={24}
+                  weight="bold"
+                />
+                <h2 className="text-xl font-black uppercase">
+                  Change Password
+                </h2>
+              </div>
+            </div>
+
+            <form
+              onSubmit={handleChangePassword}
+              className="p-6"
+            >
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1.5 block text-xs font-black uppercase text-zinc-500">
+                    Current Password
+                  </label>
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) =>
+                      setCurrentPassword(e.target.value)
+                    }
+                    required
+                    className="w-full border-2 border-black bg-white px-4 py-3 font-bold outline-none focus:bg-orange-50"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-black uppercase text-zinc-500">
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) =>
+                      setNewPassword(e.target.value)
+                    }
+                    required
+                    minLength={8}
+                    className="w-full border-2 border-black bg-white px-4 py-3 font-bold outline-none focus:bg-orange-50"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-black uppercase text-zinc-500">
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) =>
+                      setConfirmPassword(e.target.value)
+                    }
+                    required
+                    minLength={8}
+                    className="w-full border-2 border-black bg-white px-4 py-3 font-bold outline-none focus:bg-orange-50"
+                  />
+                </div>
+              </div>
+
+              {passwordSuccess && (
+                <div className="mt-4 border-2 border-black bg-green-300 p-3 text-sm font-bold">
+                  {passwordSuccess}
+                </div>
+              )}
+
+              {passwordError && (
+                <div className="mt-4 border-2 border-black bg-red-300 p-3 text-sm font-bold">
+                  {passwordError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isChangingPassword}
+                className="mt-5 flex w-full items-center justify-center gap-2 border-2 border-black bg-yellow-300 px-5 py-3 font-black shadow-[4px_4px_0_0_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isChangingPassword
+                  ? "CHANGING..."
+                  : "CHANGE PASSWORD"}
+              </button>
+            </form>
+          </div>
+
+          {/* Logout */}
+          <div className="h-fit">
+            <div className="border-2 border-black bg-white p-6 shadow-[6px_6px_0_0_#000]">
+              <h2 className="text-xl font-black uppercase">
+                Logout
+              </h2>
+
+              <p className="mt-2 text-sm text-zinc-600">
+                Sign out of your account on this device.
+              </p>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="mt-5 flex w-full items-center justify-center gap-2 border-2 border-black bg-red-300 px-5 py-3 font-black shadow-[4px_4px_0_0_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <SignOut
+                  size={20}
+                  weight="bold"
+                />
+                {isLoggingOut
+                  ? "LOGGING OUT..."
+                  : "LOGOUT"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import {
   Plus,
@@ -438,9 +439,12 @@ export default function CashierProductsPage() {
                 >
                   <td className="p-3">
                     {product.imageUrl ? (
-                      <img
+                      <Image
                         src={product.imageUrl}
                         alt={product.name}
+                        width={48}
+                        height={48}
+                        unoptimized
                         className="h-12 w-12 border border-black object-cover"
                       />
                     ) : (
@@ -737,9 +741,12 @@ export default function CashierProductsPage() {
                   </p>
                 )}
                 {productImage && (
-                  <img
+                  <Image
                     src={productImage}
                     alt="Preview"
+                    width={64}
+                    height={64}
+                    unoptimized
                     className="mt-2 h-16 border border-black object-cover"
                   />
                 )}
