@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { prisma } from "@/lib/prisma";
+import { getProfile } from "@/service/auth.service";
 
 export async function GET() {
   try {
@@ -9,52 +9,21 @@ export async function GET() {
 
     if (!currentUser) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Authentication required",
-        },
+        { success: false, message: "Authentication required" },
         { status: 401 },
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: {
-        id: currentUser.userId,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phoneNumber: true,
-        role: true,
-        createdAt: true,
-      },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "User not found",
-        },
-        { status: 404 },
-      );
-    }
+    const user = await getProfile(currentUser.userId);
 
     return NextResponse.json({
       success: true,
-      data: {
-        user,
-      },
+      data: { user },
     });
   } catch (error) {
     console.error("Get current user error:", error);
-
     return NextResponse.json(
-      {
-        success: false,
-        message: "Failed to fetch current user",
-      },
+      { success: false, message: "Failed to fetch current user" },
       { status: 500 },
     );
   }

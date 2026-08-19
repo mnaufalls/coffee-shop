@@ -1,9 +1,5 @@
 import { useState } from "react";
-
-type Category = {
-  id: string;
-  name: string;
-};
+import type { Category } from "@/types";
 
 export function useCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
