@@ -149,11 +149,11 @@ export default function OrderDetailPage() {
             {errorMessage ?? "Order not found"}
           </p>
           <Link
-            href="/orders"
+            href="/profile"
             className="mt-5 inline-flex items-center gap-2 border-2 border-black bg-white px-4 py-3 font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
           >
             <ArrowLeft size={18} weight="bold" />
-            BACK TO ORDERS
+            BACK TO PROFILE
           </Link>
         </div>
       </main>
@@ -164,11 +164,11 @@ export default function OrderDetailPage() {
     <main className="min-h-[calc(100vh-4rem)] bg-[#f5f0e8] px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-3xl">
         <Link
-          href="/orders"
+          href="/profile"
           className="mb-8 inline-flex items-center gap-2 font-black underline underline-offset-4"
         >
           <ArrowLeft size={20} weight="bold" />
-          BACK TO ORDERS
+          BACK TO PROFILE
         </Link>
 
         {/* Order Header */}

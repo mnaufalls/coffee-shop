@@ -154,11 +154,11 @@ export default function OrdersPage() {
     <main className="min-h-[calc(100vh-4rem)] bg-[#f5f0e8] px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl">
         <Link
-          href="/"
+          href="/profile"
           className="mb-8 inline-flex items-center gap-2 font-black underline underline-offset-4"
         >
           <ArrowLeft size={20} weight="bold" />
-          BACK TO HOME
+          BACK TO PROFILE
         </Link>
 
         <div className="mb-8">

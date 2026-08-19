@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowClockwise,
   Clock,
   Envelope,
   LockKey,
-  Package,
   Phone,
+  Receipt,
   SignOut,
+  Star,
   UserCircle,
 } from "@phosphor-icons/react";
 
@@ -22,41 +24,11 @@ type Profile = {
   createdAt: string;
 };
 
-type OrderDetail = {
-  id: string;
+type Favorite = {
   productId: string;
   productName: string;
-  price: string;
-  quantity: number;
-  subtotal: string;
+  totalQuantity: number;
 };
-
-type Order = {
-  id: string;
-  orderType: "dine_in" | "takeaway";
-  subtotal: string;
-  discountAmount: string;
-  taxPercentage: string;
-  taxAmount: string;
-  totalAmount: string;
-  status:
-    | "pending"
-    | "processing"
-    | "completed"
-    | "cancelled"
-    | "refunded";
-  createdAt: string;
-  updatedAt: string;
-  orderDetails: OrderDetail[];
-};
-
-function formatPrice(price: string) {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(Number(price));
-}
 
 function formatDate(date: string) {
   return new Intl.DateTimeFormat("id-ID", {
@@ -68,31 +40,14 @@ function formatDate(date: string) {
   }).format(new Date(date));
 }
 
-function getStatusClass(status: Order["status"]) {
-  switch (status) {
-    case "completed":
-      return "bg-green-300";
-    case "processing":
-      return "bg-orange-300";
-    case "cancelled":
-      return "bg-red-300";
-    case "refunded":
-      return "bg-purple-300";
-    default:
-      return "bg-yellow-300";
-  }
-}
-
-function formatStatus(status: Order["status"]) {
-  return status.replace("_", " ").toUpperCase();
-}
-
 export default function ProfilePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(
     null,
   );
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [favorites, setFavorites] = useState<Favorite[]>(
+    [],
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<
     string | null
@@ -120,19 +75,20 @@ export default function ProfilePage() {
       setErrorMessage(null);
 
       try {
-        const [profileResponse, ordersResponse] =
+        const [profileResponse, favoritesResponse] =
           await Promise.all([
             fetch("/api/profile", {
               cache: "no-store",
             }),
-            fetch("/api/orders", {
+            fetch("/api/orders/favorites", {
               cache: "no-store",
             }),
           ]);
 
         const profileResult =
           await profileResponse.json();
-        const ordersResult = await ordersResponse.json();
+        const favoritesResult =
+          await favoritesResponse.json();
 
         if (!profileResponse.ok) {
           throw new Error(
@@ -141,15 +97,11 @@ export default function ProfilePage() {
           );
         }
 
-        if (!ordersResponse.ok) {
-          throw new Error(
-            ordersResult.message ??
-              "Failed to load orders",
-          );
-        }
-
         setProfile(profileResult.data.user);
-        setOrders(ordersResult.data.orders);
+
+        if (favoritesResponse.ok) {
+          setFavorites(favoritesResult.data.favorites);
+        }
       } catch (error) {
         setErrorMessage(
           error instanceof Error
@@ -275,56 +227,42 @@ export default function ProfilePage() {
 
   return (
     <main className="page-container py-10 sm:py-14">
-      {/* Header */}
-      <section className="mb-10">
-        <p className="mb-3 text-sm font-black uppercase tracking-widest">
-          Account
-        </p>
+      <div className="mx-auto max-w-4xl space-y-8">
+        {/* Header */}
+        <section>
+          <p className="mb-3 text-sm font-black uppercase tracking-widest">
+            Account
+          </p>
 
-        <h1 className="text-4xl font-black uppercase tracking-tight sm:text-6xl">
-          My Profile
-        </h1>
+          <h1 className="text-4xl font-black uppercase tracking-tight sm:text-6xl">
+            My Profile
+          </h1>
+        </section>
 
-        <p className="mt-4 max-w-2xl text-zinc-600">
-          Manage your account information and view your
-          coffee shop orders.
-        </p>
-      </section>
-
-      <div className="grid gap-8 lg:grid-cols-[360px_1fr]">
-        {/* Profile Card */}
-        <section className="h-fit border-2 border-black bg-white shadow-[6px_6px_0_0_#000]">
-          <div className="border-b-2 border-black bg-orange-400 p-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center border-2 border-black bg-white">
-                <UserCircle
-                  size={42}
-                  weight="bold"
-                />
-              </div>
-
-              <div className="min-w-0">
-                <h2 className="truncate text-xl font-black uppercase">
-                  {profile.name}
-                </h2>
-
-                <p className="mt-1 text-sm font-bold uppercase">
-                  {profile.role}
-                </p>
-              </div>
-            </div>
+        {/* Profile Summary Card */}
+        <section className="border-2 border-black bg-white p-6 shadow-[5px_5px_0_0_#000] sm:flex sm:items-center sm:gap-8">
+          <div className="mb-6 flex h-24 w-24 shrink-0 items-center justify-center border-2 border-black bg-orange-300 sm:mb-0 sm:h-32 sm:w-32">
+            <UserCircle
+              size={64}
+              weight="bold"
+              className="text-black"
+            />
           </div>
 
-          <div className="divide-y-2 divide-black">
-            <div className="flex gap-4 p-5">
-              <Envelope
-                size={24}
-                weight="bold"
-                className="shrink-0"
-              />
+          <div className="flex-grow text-center sm:text-left">
+            <h2 className="font-[family-name:var(--font-bricolage)] text-2xl font-black uppercase sm:text-3xl">
+              {profile.name}
+            </h2>
 
-              <div className="min-w-0">
-                <p className="text-xs font-black uppercase text-zinc-500">
+            <div className="mt-2 flex flex-wrap gap-2 justify-center sm:justify-start">
+              <span className="border-2 border-black bg-yellow-300 px-3 py-1 text-xs font-black uppercase">
+                {profile.role}
+              </span>
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 gap-4 border-t-4 border-black pt-4 sm:grid-cols-3 text-left">
+              <div>
+                <p className="text-xs font-black uppercase text-orange-600">
                   Email
                 </p>
 
@@ -332,17 +270,9 @@ export default function ProfilePage() {
                   {profile.email}
                 </p>
               </div>
-            </div>
-
-            <div className="flex gap-4 p-5">
-              <Phone
-                size={24}
-                weight="bold"
-                className="shrink-0"
-              />
 
               <div>
-                <p className="text-xs font-black uppercase text-zinc-500">
+                <p className="text-xs font-black uppercase text-orange-600">
                   Phone
                 </p>
 
@@ -350,17 +280,9 @@ export default function ProfilePage() {
                   {profile.phoneNumber}
                 </p>
               </div>
-            </div>
-
-            <div className="flex gap-4 p-5">
-              <Clock
-                size={24}
-                weight="bold"
-                className="shrink-0"
-              />
 
               <div>
-                <p className="text-xs font-black uppercase text-zinc-500">
+                <p className="text-xs font-black uppercase text-orange-600">
                   Member Since
                 </p>
 
@@ -372,222 +294,150 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        {/* Orders */}
-        <section>
-          <div className="mb-5 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-sm font-black uppercase tracking-widest">
-                History
-              </p>
+        {/* Order History + Favorite Orders */}
+        <section className="grid gap-6 sm:grid-cols-2">
+          {/* Order History */}
+          <Link
+            href="/orders"
+            className="flex flex-col items-center justify-center border-2 border-black bg-[#FF9100] p-6 text-center shadow-[5px_5px_0_0_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
+          >
+            <Receipt
+              size={48}
+              weight="bold"
+              className="mb-4"
+            />
 
-              <h2 className="mt-1 text-3xl font-black uppercase">
-                My Orders
-              </h2>
-            </div>
+            <h3 className="font-[family-name:var(--font-bricolage)] text-xl font-black uppercase">
+              Order History
+            </h3>
 
-            <div className="flex items-center gap-2 border-2 border-black bg-yellow-300 px-3 py-2 font-black">
-              <Package size={20} weight="bold" />
-              {orders.length}
-            </div>
-          </div>
+            <p className="mt-2 text-sm font-bold text-zinc-700">
+              View your past brews and favorites.
+            </p>
 
-          {orders.length === 0 ? (
-            <div className="border-2 border-black bg-white p-8 text-center shadow-[5px_5px_0_0_#000]">
-              <Package
-                size={48}
-                weight="bold"
-                className="mx-auto"
+            <span className="mt-6 inline-flex border-2 border-black bg-white px-6 py-3 font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none uppercase text-sm">
+              View History
+            </span>
+          </Link>
+
+          {/* Favorite Orders */}
+          <div className="border-2 border-black bg-yellow-300 p-6 shadow-[5px_5px_0_0_#000]">
+            <div className="flex items-center gap-3 mb-4">
+              <Star
+                size={32}
+                weight="fill"
+                className="text-black"
               />
-
-              <h3 className="mt-4 text-xl font-black uppercase">
-                No Orders Yet
+              <h3 className="font-[family-name:var(--font-bricolage)] text-xl font-black uppercase">
+                Favorites
               </h3>
+            </div>
 
-              <p className="mt-2 text-sm text-zinc-600">
-                Your order history will appear here.
+            {favorites.length === 0 ? (
+              <p className="text-sm font-bold text-zinc-700">
+                No favorites yet. Start ordering to see
+                your top picks here!
               </p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {orders.map((order) => (
-                <article
-                  key={order.id}
-                  className="border-2 border-black bg-white shadow-[5px_5px_0_0_#000]"
-                >
-                  {/* Order Header */}
-                  <div className="flex flex-col gap-4 border-b-2 border-black bg-zinc-100 p-5 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-xs font-black uppercase text-zinc-500">
-                        Order ID
-                      </p>
-
-                      <p className="mt-1 break-all font-black">
-                        #{order.id}
-                      </p>
-
-                      <p className="mt-2 text-sm font-bold text-zinc-600">
-                        {formatDate(order.createdAt)}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <span className="border-2 border-black bg-white px-3 py-2 text-xs font-black uppercase">
-                        {order.orderType.replace(
-                          "_",
-                          " ",
-                        )}
+            ) : (
+              <div className="space-y-2">
+                {favorites.slice(0, 3).map((item, idx) => (
+                  <div
+                    key={item.productId}
+                    className="flex items-center justify-between border-2 border-black bg-white p-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-7 w-7 items-center justify-center border-2 border-black bg-orange-300 text-xs font-black">
+                        {idx + 1}
                       </span>
 
-                      <span
-                        className={`border-2 border-black px-3 py-2 text-xs font-black ${getStatusClass(
-                          order.status,
-                        )}`}
-                      >
-                        {formatStatus(order.status)}
+                      <span className="text-sm font-bold">
+                        {item.productName}
                       </span>
                     </div>
+
+                    <span className="text-xs font-black">
+                      {item.totalQuantity}x
+                    </span>
                   </div>
-
-                  {/* Items */}
-                  <div className="divide-y-2 divide-black">
-                    {order.orderDetails.map(
-                      (detail) => (
-                        <div
-                          key={detail.id}
-                          className="flex items-start justify-between gap-4 p-5"
-                        >
-                          <div>
-                            <p className="font-black uppercase">
-                              {detail.productName}
-                            </p>
-
-                            <p className="mt-1 text-sm text-zinc-600">
-                              {detail.quantity} ×{" "}
-                              {formatPrice(
-                                detail.price,
-                              )}
-                            </p>
-                          </div>
-
-                          <p className="shrink-0 font-black">
-                            {formatPrice(
-                              detail.subtotal,
-                            )}
-                          </p>
-                        </div>
-                      ),
-                    )}
-                  </div>
-
-                  {/* Total */}
-                  <div className="border-t-2 border-black bg-yellow-300 p-5">
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="font-black uppercase">
-                        Total
-                      </span>
-
-                      <span className="text-xl font-black">
-                        {formatPrice(order.totalAmount)}
-                      </span>
-                    </div>
-
-                    <div className="mt-3 flex justify-between gap-4 text-xs font-bold">
-                      <span>
-                        Subtotal:{" "}
-                        {formatPrice(order.subtotal)}
-                      </span>
-
-                      <span>
-                        Tax {order.taxPercentage}%:{" "}
-                        {formatPrice(order.taxAmount)}
-                      </span>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
-
-      {/* Account Settings */}
-      <section className="mt-12 border-t-2 border-black pt-10">
-        <div className="grid gap-8 lg:grid-cols-[360px_1fr]">
-          {/* Password Change */}
-          <div className="h-fit border-2 border-black bg-white shadow-[6px_6px_0_0_#000]">
-            <div className="border-b-2 border-black bg-pink-300 p-6">
-              <div className="flex items-center gap-3">
-                <LockKey
-                  size={24}
-                  weight="bold"
-                />
-                <h2 className="text-xl font-black uppercase">
-                  Change Password
-                </h2>
+                ))}
               </div>
+            )}
+          </div>
+        </section>
+
+        {/* Account Settings */}
+        <section className="grid gap-6 sm:grid-cols-2">
+          {/* Password Change */}
+          <div className="border-2 border-black bg-pink-300 p-6 shadow-[5px_5px_0_0_#000]">
+            <div className="flex items-center gap-3 mb-6">
+              <LockKey size={32} weight="bold" />
+              <h3 className="font-[family-name:var(--font-bricolage)] text-xl font-black uppercase">
+                Security
+              </h3>
             </div>
 
             <form
               onSubmit={handleChangePassword}
-              className="p-6"
+              className="space-y-4"
             >
-              <div className="space-y-4">
-                <div>
-                  <label className="mb-1.5 block text-xs font-black uppercase text-zinc-500">
-                    Current Password
-                  </label>
-                  <input
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) =>
-                      setCurrentPassword(e.target.value)
-                    }
-                    required
-                    className="w-full border-2 border-black bg-white px-4 py-3 font-bold outline-none focus:bg-orange-50"
-                  />
-                </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-black uppercase text-zinc-700">
+                  Current Password
+                </label>
 
-                <div>
-                  <label className="mb-1.5 block text-xs font-black uppercase text-zinc-500">
-                    New Password
-                  </label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) =>
-                      setNewPassword(e.target.value)
-                    }
-                    required
-                    minLength={8}
-                    className="w-full border-2 border-black bg-white px-4 py-3 font-bold outline-none focus:bg-orange-50"
-                  />
-                </div>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) =>
+                    setCurrentPassword(e.target.value)
+                  }
+                  required
+                  className="w-full border-2 border-black bg-white p-3 font-bold outline-none focus:bg-orange-50"
+                />
+              </div>
 
-                <div>
-                  <label className="mb-1.5 block text-xs font-black uppercase text-zinc-500">
-                    Confirm New Password
-                  </label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) =>
-                      setConfirmPassword(e.target.value)
-                    }
-                    required
-                    minLength={8}
-                    className="w-full border-2 border-black bg-white px-4 py-3 font-bold outline-none focus:bg-orange-50"
-                  />
-                </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-black uppercase text-zinc-700">
+                  New Password
+                </label>
+
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) =>
+                    setNewPassword(e.target.value)
+                  }
+                  required
+                  minLength={8}
+                  className="w-full border-2 border-black bg-white p-3 font-bold outline-none focus:bg-orange-50"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-black uppercase text-zinc-700">
+                  Confirm New Password
+                </label>
+
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) =>
+                    setConfirmPassword(e.target.value)
+                  }
+                  required
+                  minLength={8}
+                  className="w-full border-2 border-black bg-white p-3 font-bold outline-none focus:bg-orange-50"
+                />
               </div>
 
               {passwordSuccess && (
-                <div className="mt-4 border-2 border-black bg-green-300 p-3 text-sm font-bold">
+                <div className="border-2 border-black bg-green-300 p-3 text-sm font-bold">
                   {passwordSuccess}
                 </div>
               )}
 
               {passwordError && (
-                <div className="mt-4 border-2 border-black bg-red-300 p-3 text-sm font-bold">
+                <div className="border-2 border-black bg-red-300 p-3 text-sm font-bold">
                   {passwordError}
                 </div>
               )}
@@ -595,44 +445,44 @@ export default function ProfilePage() {
               <button
                 type="submit"
                 disabled={isChangingPassword}
-                className="mt-5 flex w-full items-center justify-center gap-2 border-2 border-black bg-yellow-300 px-5 py-3 font-black shadow-[4px_4px_0_0_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-2 flex w-full items-center justify-center gap-2 border-2 border-black bg-yellow-300 px-5 py-3 font-black shadow-[4px_4px_0_0_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none disabled:cursor-not-allowed disabled:opacity-50 uppercase text-sm"
               >
                 {isChangingPassword
                   ? "CHANGING..."
-                  : "CHANGE PASSWORD"}
+                  : "UPDATE PASSWORD"}
               </button>
             </form>
           </div>
 
           {/* Logout */}
-          <div className="h-fit">
-            <div className="border-2 border-black bg-white p-6 shadow-[6px_6px_0_0_#000]">
-              <h2 className="text-xl font-black uppercase">
-                Logout
-              </h2>
+          <div className="flex flex-col items-center justify-center border-2 border-black bg-red-300 p-6 text-center shadow-[5px_5px_0_0_#000]">
+            <SignOut
+              size={48}
+              weight="bold"
+              className="mb-4"
+            />
 
-              <p className="mt-2 text-sm text-zinc-600">
-                Sign out of your account on this device.
-              </p>
+            <h3 className="font-[family-name:var(--font-bricolage)] text-xl font-black uppercase">
+              Done for now?
+            </h3>
 
-              <button
-                type="button"
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-                className="mt-5 flex w-full items-center justify-center gap-2 border-2 border-black bg-red-300 px-5 py-3 font-black shadow-[4px_4px_0_0_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <SignOut
-                  size={20}
-                  weight="bold"
-                />
-                {isLoggingOut
-                  ? "LOGGING OUT..."
-                  : "LOGOUT"}
-              </button>
-            </div>
+            <p className="mt-2 text-sm font-bold text-zinc-700">
+              Stay caffeinated out there.
+            </p>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="mt-6 border-2 border-black bg-white px-8 py-3 font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:cursor-not-allowed disabled:opacity-50 uppercase text-sm"
+            >
+              {isLoggingOut
+                ? "LOGGING OUT..."
+                : "LOGOUT"}
+            </button>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </main>
   );
 }
