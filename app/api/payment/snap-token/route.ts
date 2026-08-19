@@ -103,6 +103,33 @@ export async function POST(request: Request) {
     }
 
     // 8. Build Midtrans transaction parameters
+    const discountAmount = Number(order.discountAmount);
+
+    const itemDetails = [
+      ...order.orderDetails.map((detail) => ({
+        id: detail.productId,
+        price: Number(detail.price),
+        quantity: detail.quantity,
+        name: detail.productName,
+      })),
+
+      {
+        id: `tax-${order.id}`,
+        price: Number(order.taxAmount),
+        quantity: 1,
+        name: `Tax ${Number(order.taxPercentage)}%`,
+      },
+    ];
+
+    if (discountAmount > 0) {
+      itemDetails.push({
+        id: `discount-${order.id}`,
+        price: -discountAmount,
+        quantity: 1,
+        name: "Discount",
+      });
+    }
+
     const parameter = {
       transaction_details: {
         order_id: order.id,
@@ -115,21 +142,11 @@ export async function POST(request: Request) {
         phone: order.user.phoneNumber,
       },
 
-      item_details: [
-        ...order.orderDetails.map((detail) => ({
-          id: detail.productId,
-          price: Number(detail.price),
-          quantity: detail.quantity,
-          name: detail.productName,
-        })),
+      item_details: itemDetails,
 
-        {
-          id: `tax-${order.id}`,
-          price: Number(order.taxAmount),
-          quantity: 1,
-          name: `Tax ${Number(order.taxPercentage)}%`,
-        },
-      ],
+      callbacks: {
+        finish: `${process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"}/orders/${order.id}`,
+      },
     };
 
     // 9. Generate Midtrans Snap transaction
