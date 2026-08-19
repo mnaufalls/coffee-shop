@@ -22,6 +22,7 @@ export type Order = {
   taxAmount: string;
   totalAmount: string;
   status: OrderStatus;
+  note: string | null;
   createdAt: string;
   updatedAt: string;
   customer: {
@@ -44,6 +45,7 @@ type OrderCardProps = {
   onUpdateStatus: (
     orderId: string,
     status: OrderStatus,
+    note?: string,
   ) => void;
   showActions?: boolean;
 };
@@ -168,7 +170,13 @@ export default function OrderCard({
                 type="button"
                 disabled={updating}
                 onClick={() =>
-                  onUpdateStatus(order.id, status)
+                  onUpdateStatus(
+                    order.id,
+                    status,
+                    status === "completed"
+                      ? "Pesanan siap diambil di kasir."
+                      : undefined,
+                  )
                 }
                 className="border-2 border-black bg-yellow-300 px-4 py-2 text-sm font-black uppercase shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:cursor-not-allowed disabled:opacity-50"
               >

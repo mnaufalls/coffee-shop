@@ -17,6 +17,7 @@ const updateOrderSchema = z.object({
     "completed",
     "cancelled",
   ]),
+  note: z.string().optional(),
 });
 
 export async function PATCH(
@@ -88,6 +89,7 @@ export async function PATCH(
       },
       data: {
         status: result.data.status,
+        note: result.data.note,
         cashierId: user.userId,
       },
       include: {
@@ -127,6 +129,7 @@ export async function PATCH(
           totalAmount:
             updatedOrder.totalAmount.toString(),
           status: updatedOrder.status,
+          note: updatedOrder.note,
           createdAt: updatedOrder.createdAt,
           updatedAt: updatedOrder.updatedAt,
 

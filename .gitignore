@@ -32,6 +32,7 @@ yarn-error.log*
 
 # auth testing cookies
 cookies*.txt
+cookies-admin*.txt
 
 # PRD
 Product Requirements Document*

@@ -127,7 +127,7 @@ export default function CheckoutForm({
       <button
         type="button"
         onClick={() => setShowCheckout(true)}
-        className="flex w-full items-center justify-center gap-2 border-2 border-black bg-black px-5 py-4 font-black text-white shadow-[5px_5px_0_0_#fff] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
+        className="flex w-full items-center justify-center gap-2 border-2 border-black border-black bg-black px-5 py-4 font-black text-white shadow-[5px_5px_0_0_#fff] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
       >
         CHECKOUT
         <ArrowRight size={20} weight="bold" />
@@ -526,7 +526,7 @@ export default function CheckoutForm({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="flex w-full items-center justify-center gap-2 border-2 border-black bg-yellow-300 px-5 py-4 font-black shadow-[5px_5px_0_0_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex w-full items-center justify-center gap-2 border-2 border-black bg-black px-5 py-4 font-black text-white shadow-[5px_5px_0_0_#fff] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
       >
         {isSubmitting
           ? "PROCESSING..."

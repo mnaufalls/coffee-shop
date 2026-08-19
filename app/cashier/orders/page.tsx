@@ -125,6 +125,7 @@ export default function CashierOrdersPage() {
   async function updateOrderStatus(
     orderId: string,
     status: OrderStatus,
+    note?: string,
   ) {
     try {
       setUpdatingId(orderId);
@@ -138,7 +139,7 @@ export default function CashierOrdersPage() {
             "Content-Type": "application/json",
           },
           credentials: "include",
-          body: JSON.stringify({ status }),
+          body: JSON.stringify({ status, note }),
         },
       );
 

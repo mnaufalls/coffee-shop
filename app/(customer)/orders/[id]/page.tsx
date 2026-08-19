@@ -32,6 +32,7 @@ type Order = {
     | "completed"
     | "cancelled"
     | "refunded";
+  note: string | null;
   createdAt: string;
   orderDetails: OrderDetail[];
 };
@@ -202,6 +203,14 @@ export default function OrderDetailPage() {
               </span>
             </div>
           </div>
+
+          {order.note && (
+            <div className="mt-4 border-t-2 border-black pt-4">
+              <p className="text-sm font-black">
+                {order.note}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Items */}

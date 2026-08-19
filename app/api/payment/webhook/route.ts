@@ -99,11 +99,11 @@ function getTransactionStatus(
 
 function getOrderStatus(
   transactionStatus: string,
-): "pending" | "completed" | "cancelled" | null {
+): "pending" | "processing" | "completed" | "cancelled" | null {
   switch (transactionStatus) {
     case "settlement":
     case "capture":
-      return "completed";
+      return "processing";
 
     case "challenge":
       return "pending";
@@ -202,7 +202,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (order.status === "completed") {
+    if (order.status === "processing") {
       return NextResponse.json({
         success: true,
         message: "Order already processed",
@@ -242,7 +242,7 @@ export async function POST(request: Request) {
         });
       }
 
-      if (orderStatus === "completed") {
+      if (orderStatus === "processing") {
         for (const detail of order.orderDetails) {
           await tx.product.update({
             where: { id: detail.productId },

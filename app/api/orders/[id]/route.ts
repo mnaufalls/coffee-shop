@@ -63,6 +63,7 @@ export async function GET(
           totalAmount:
             order.totalAmount.toString(),
           status: order.status,
+          note: order.note,
           createdAt: order.createdAt,
           updatedAt: order.updatedAt,
           orderDetails: order.orderDetails.map(
