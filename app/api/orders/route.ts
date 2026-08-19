@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { prisma } from "@/lib/prisma";
-import { createOrder } from "@/service/order.service";
+import { createOrder, getUserOrders } from "@/service/order.service";
 
 const createOrderSchema = z.object({
   orderType: z.enum(["dine_in", "takeaway"]),
@@ -163,62 +163,11 @@ export async function GET(request: NextRequest) {
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 10;
 
-    const [orders, total] = await Promise.all([
-      prisma.order.findMany({
-        where: {
-          userId: user.userId,
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-        skip: (page - 1) * limit,
-        take: limit,
-        include: {
-          orderDetails: true,
-        },
-      }),
-      prisma.order.count({
-        where: {
-          userId: user.userId,
-        },
-      }),
-    ]);
+    const result = await getUserOrders(user.userId, page, limit);
 
     return NextResponse.json({
       success: true,
-      data: {
-        orders: orders.map((order) => ({
-          id: order.id,
-          orderType: order.orderType,
-          subtotal: order.subtotal.toString(),
-          discountAmount:
-            order.discountAmount.toString(),
-          taxPercentage:
-            order.taxPercentage.toString(),
-          taxAmount: order.taxAmount.toString(),
-          totalAmount:
-            order.totalAmount.toString(),
-          status: order.status,
-          createdAt: order.createdAt,
-          updatedAt: order.updatedAt,
-          orderDetails: order.orderDetails.map(
-            (detail) => ({
-              id: detail.id,
-              productId: detail.productId,
-              productName: detail.productName,
-              price: detail.price.toString(),
-              quantity: detail.quantity,
-              subtotal: detail.subtotal.toString(),
-            }),
-          ),
-        })),
-        meta: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-        },
-      },
+      data: result,
     });
   } catch (error) {
     console.error("Get orders error:", error);
