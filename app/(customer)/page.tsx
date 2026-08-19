@@ -19,6 +19,7 @@ type Product = {
   description: string;
   price: string;
   stock: number;
+  isAvailable: boolean;
   imageUrl: string | null;
   category: {
     id: string;
@@ -230,7 +231,7 @@ export default async function Home() {
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {featuredProducts.map((product) => {
-              const isOutOfStock = product.stock <= 0;
+              const isOutOfStock = !product.isAvailable || product.stock <= 0;
 
               return (
                 <Link

@@ -7,7 +7,7 @@ const createProductSchema = z.object({
   price: z.number().positive("Price must be positive"),
   stock: z.number().int().min(0, "Stock must be non-negative"),
   categoryId: z.string().min(1, "Category is required"),
-  imageUrl: z.string().url().optional(),
+  imageUrl: z.string().optional(),
 });
 
 const updateProductSchema = z.object({
@@ -15,8 +15,9 @@ const updateProductSchema = z.object({
   description: z.string().min(1).optional(),
   price: z.number().positive().optional(),
   stock: z.number().int().min(0).optional(),
+  isAvailable: z.boolean().optional(),
   categoryId: z.string().min(1).optional(),
-  imageUrl: z.string().url().optional(),
+  imageUrl: z.string().optional(),
 });
 
 type GetProductsParams = {
@@ -31,6 +32,7 @@ function serializeProduct(product: {
   description: string;
   price: { toString(): string };
   stock: number;
+  isAvailable: boolean;
   imageUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -46,6 +48,7 @@ function serializeProduct(product: {
     description: product.description,
     price: product.price.toString(),
     stock: product.stock,
+    isAvailable: product.isAvailable,
     imageUrl: product.imageUrl,
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,

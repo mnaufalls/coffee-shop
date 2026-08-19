@@ -10,6 +10,7 @@ type Product = {
   description: string;
   price: string;
   stock: number;
+  isAvailable: boolean;
   imageUrl: string | null;
   category: {
     id: string;

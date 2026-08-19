@@ -8,6 +8,8 @@ import {
   TrashSimple,
   X,
   WarningCircle,
+  ToggleLeft,
+  ToggleRight,
 } from "@phosphor-icons/react";
 
 type Product = {
@@ -16,6 +18,7 @@ type Product = {
   description: string;
   price: string;
   stock: number;
+  isAvailable: boolean;
   imageUrl: string | null;
   categoryId: string;
   category: { id: string; name: string };
@@ -244,6 +247,50 @@ export default function CashierProductsPage() {
     }
   }
 
+  async function handleToggleAvailability(
+    productId: string,
+    currentAvailability: boolean,
+  ) {
+    try {
+      const res = await fetch(
+        `/api/products/${productId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            isAvailable: !currentAvailability,
+          }),
+        },
+      );
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        throw new Error(
+          result.message ??
+            "Failed to update availability",
+        );
+      }
+
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === productId
+            ? { ...p, isAvailable: !p.isAvailable }
+            : p,
+        ),
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to update availability",
+      );
+    }
+  }
+
   async function handleDeleteProduct(id: string) {
     try {
       const res = await fetch(`/api/products/${id}`, {
@@ -454,7 +501,14 @@ export default function CashierProductsPage() {
                     )}
                   </td>
                   <td className="p-3 font-bold">
-                    {product.name}
+                    <div className="flex items-center gap-2">
+                      {product.name}
+                      {!product.isAvailable && (
+                        <span className="border border-black bg-zinc-300 px-1.5 py-0.5 text-[10px] font-black uppercase">
+                          Sold Out
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="p-3">
                     <span className="border border-black bg-zinc-100 px-2 py-1 text-xs font-bold">
@@ -491,6 +545,37 @@ export default function CashierProductsPage() {
                   </td>
                   <td className="p-3">
                     <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleToggleAvailability(
+                            product.id,
+                            product.isAvailable,
+                          )
+                        }
+                        className={`border-2 border-black p-2 shadow-[2px_2px_0_0_#000] transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none ${
+                          product.isAvailable
+                            ? "bg-green-300"
+                            : "bg-zinc-300"
+                        }`}
+                        title={
+                          product.isAvailable
+                            ? "Mark as sold out"
+                            : "Mark as available"
+                        }
+                      >
+                        {product.isAvailable ? (
+                          <ToggleRight
+                            size={14}
+                            weight="bold"
+                          />
+                        ) : (
+                          <ToggleLeft
+                            size={14}
+                            weight="bold"
+                          />
+                        )}
+                      </button>
                       <button
                         type="button"
                         onClick={() =>

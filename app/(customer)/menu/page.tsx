@@ -16,6 +16,7 @@ type Product = {
   description: string;
   price: string;
   stock: number;
+  isAvailable: boolean;
   imageUrl: string | null;
   category: {
     id: string;
@@ -85,7 +86,7 @@ function formatPrice(price: string) {
 }
 
 function ProductCard({ product }: { product: Product }) {
-  const isOutOfStock = product.stock <= 0;
+  const isOutOfStock = !product.isAvailable || product.stock <= 0;
 
   const cardContent = (
     <>
