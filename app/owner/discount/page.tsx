@@ -1,34 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Tag,
-  Plus,
-  PencilSimple,
-  Trash,
-  CaretLeft,
-  CaretRight,
-  X,
-  MagnifyingGlass,
-} from "@phosphor-icons/react";
-
-interface Voucher {
-  id: string;
-  code: string;
-  discountAmount: string;
-  usageLimit: number;
-  usageCount: number;
-  minPurchaseAmount: string;
-  isActive: boolean;
-  createdAt: string;
-}
-
-interface Meta {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-}
+import { Tag, Plus, PencilSimple, Trash, CaretLeft, CaretRight, X, MagnifyingGlass } from "@phosphor-icons/react";
+import { useVouchers, type Voucher } from "@/hooks/useVouchers";
+import { formatRupiah } from "@/components/dashboard/SummaryCards";
 
 const emptyForm = {
   code: "",
@@ -38,20 +13,12 @@ const emptyForm = {
   isActive: true,
 };
 
-function formatRupiah(value: number) {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
 export default function OwnerDiscountPage() {
-  const [vouchers, setVouchers] = useState<Voucher[]>([]);
-  const [meta, setMeta] = useState<Meta>({ page: 1, limit: 10, total: 0, totalPages: 0 });
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const {
+    vouchers, meta, isLoading, error, success, setError, setSuccess,
+    loadVouchers, createVoucher, updateVoucher, toggleActive, deleteVoucher,
+  } = useVouchers();
+
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -64,30 +31,7 @@ export default function OwnerDiscountPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadVouchers() {
-      setIsLoading(true);
-      setError("");
-      try {
-        const params = new URLSearchParams({ page: String(page), limit: "10" });
-        if (search) params.set("search", search);
-        const res = await fetch(`/api/vouchers?${params}`, { credentials: "include", cache: "no-store" });
-        const json = await res.json();
-        if (cancelled) return;
-        if (!res.ok || !json.success) throw new Error(json.message ?? "Failed to fetch vouchers");
-        setVouchers(json.data ?? []);
-        setMeta(json.meta);
-      } catch (err) {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Failed to fetch vouchers");
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    }
-
-    void loadVouchers();
-    return () => { cancelled = true; };
+    loadVouchers(page, search);
   }, [page, search, refreshKey]);
 
   function openCreate() {
@@ -128,78 +72,34 @@ export default function OwnerDiscountPage() {
 
     try {
       if (modalMode === "create") {
-        const res = await fetch("/api/vouchers", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        const json = await res.json();
-        if (!res.ok || !json.success) {
-          if (json.errors) setFormErrors(json.errors);
-          throw new Error(json.message ?? "Failed to create voucher");
-        }
-        setSuccess("Voucher created successfully");
+        await createVoucher(body);
         setShowModal(false);
         setRefreshKey((k) => k + 1);
       } else if (editingId) {
-        const res = await fetch(`/api/vouchers/${editingId}`, {
-          method: "PATCH",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        const json = await res.json();
-        if (!res.ok || !json.success) {
-          if (json.errors) setFormErrors(json.errors);
-          throw new Error(json.message ?? "Failed to update voucher");
-        }
-        setSuccess("Voucher updated successfully");
+        await updateVoucher(editingId, body);
         setShowModal(false);
         setRefreshKey((k) => k + 1);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Operation failed");
+    } catch (err: any) {
+      if (typeof err === "object" && err !== null) {
+        setFormErrors(err);
+      } else {
+        setError(err instanceof Error ? err.message : "Operation failed");
+      }
     } finally {
       setSubmitting(false);
     }
   }
 
   async function handleToggleActive(v: Voucher) {
-    setSuccess("");
-    setError("");
-    try {
-      const res = await fetch(`/api/vouchers/${v.id}`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: !v.isActive }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.message ?? "Failed to update voucher");
-      setSuccess(`Voucher ${v.isActive ? "deactivated" : "activated"}`);
-      setRefreshKey((k) => k + 1);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Operation failed");
-    }
+    await toggleActive(v.id, v.isActive);
+    setRefreshKey((k) => k + 1);
   }
 
   async function handleDelete(v: Voucher) {
     if (!confirm(`Delete voucher "${v.code}"? This cannot be undone.`)) return;
-    setSuccess("");
-    setError("");
-    try {
-      const res = await fetch(`/api/vouchers/${v.id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.message ?? "Failed to delete voucher");
-      setSuccess("Voucher deleted successfully");
-      setRefreshKey((k) => k + 1);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Operation failed");
-    }
+    await deleteVoucher(v.id);
+    setRefreshKey((k) => k + 1);
   }
 
   return (
@@ -268,25 +168,13 @@ export default function OwnerDiscountPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => openEdit(v)}
-                        className="border-2 border-black bg-blue-200 p-1.5 shadow-[2px_2px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
-                        title="Edit"
-                      >
+                      <button onClick={() => openEdit(v)} className="border-2 border-black bg-blue-200 p-1.5 shadow-[2px_2px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none" title="Edit">
                         <PencilSimple size={14} weight="bold" />
                       </button>
-                      <button
-                        onClick={() => handleToggleActive(v)}
-                        className={`border-2 border-black p-1.5 shadow-[2px_2px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none ${v.isActive ? "bg-orange-200" : "bg-green-200"}`}
-                        title={v.isActive ? "Deactivate" : "Activate"}
-                      >
+                      <button onClick={() => handleToggleActive(v)} className={`border-2 border-black p-1.5 shadow-[2px_2px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none ${v.isActive ? "bg-orange-200" : "bg-green-200"}`} title={v.isActive ? "Deactivate" : "Activate"}>
                         <Tag size={14} weight="bold" />
                       </button>
-                      <button
-                        onClick={() => handleDelete(v)}
-                        className="border-2 border-black bg-red-200 p-1.5 shadow-[2px_2px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
-                        title="Delete"
-                      >
+                      <button onClick={() => handleDelete(v)} className="border-2 border-black bg-red-200 p-1.5 shadow-[2px_2px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none" title="Delete">
                         <Trash size={14} weight="bold" />
                       </button>
                     </div>
@@ -302,25 +190,16 @@ export default function OwnerDiscountPage() {
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold">Page {meta.page} of {meta.totalPages}</p>
           <div className="flex gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="flex items-center gap-1 border-2 border-black bg-white px-3 py-1.5 text-sm font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="flex items-center gap-1 border-2 border-black bg-white px-3 py-1.5 text-sm font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed">
               <CaretLeft size={14} weight="bold" /> Previous
             </button>
-            <button
-              onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-              disabled={page >= meta.totalPages}
-              className="flex items-center gap-1 border-2 border-black bg-white px-3 py-1.5 text-sm font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <button onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))} disabled={page >= meta.totalPages} className="flex items-center gap-1 border-2 border-black bg-white px-3 py-1.5 text-sm font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed">
               Next <CaretRight size={14} weight="bold" />
             </button>
           </div>
         </div>
       )}
 
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="mx-4 w-full max-w-md border-2 border-black bg-white p-6 shadow-[5px_5px_0_0_#000]">
@@ -328,84 +207,38 @@ export default function OwnerDiscountPage() {
               <h2 className="text-xl font-black font-[family-name:var(--font-bricolage)] uppercase">
                 {modalMode === "create" ? "Add Voucher" : "Edit Voucher"}
               </h2>
-              <button onClick={() => setShowModal(false)} className="p-1">
-                <X size={20} weight="bold" />
-              </button>
+              <button onClick={() => setShowModal(false)} className="p-1"><X size={20} weight="bold" /></button>
             </div>
-
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="mb-1 block text-sm font-bold">Code</label>
-                <input
-                  type="text"
-                  value={form.code}
-                  onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-                  className="w-full border-2 border-black bg-white px-4 py-3 text-sm font-bold uppercase outline-none focus:bg-orange-50"
-                  required
-                />
+                <input type="text" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} className="w-full border-2 border-black bg-white px-4 py-3 text-sm font-bold uppercase outline-none focus:bg-orange-50" required />
                 {formErrors.code && <p className="mt-1 text-xs font-bold text-red-600">{formErrors.code[0]}</p>}
               </div>
               <div>
                 <label className="mb-1 block text-sm font-bold">Discount Amount (IDR)</label>
-                <input
-                  type="number"
-                  value={form.discountAmount}
-                  onChange={(e) => setForm({ ...form, discountAmount: e.target.value })}
-                  className="w-full border-2 border-black bg-white px-4 py-3 text-sm font-bold outline-none focus:bg-orange-50"
-                  required
-                  min={1}
-                />
+                <input type="number" value={form.discountAmount} onChange={(e) => setForm({ ...form, discountAmount: e.target.value })} className="w-full border-2 border-black bg-white px-4 py-3 text-sm font-bold outline-none focus:bg-orange-50" required min={1} />
                 {formErrors.discountAmount && <p className="mt-1 text-xs font-bold text-red-600">{formErrors.discountAmount[0]}</p>}
               </div>
               <div>
                 <label className="mb-1 block text-sm font-bold">Usage Limit</label>
-                <input
-                  type="number"
-                  value={form.usageLimit}
-                  onChange={(e) => setForm({ ...form, usageLimit: e.target.value })}
-                  className="w-full border-2 border-black bg-white px-4 py-3 text-sm font-bold outline-none focus:bg-orange-50"
-                  required
-                  min={1}
-                />
+                <input type="number" value={form.usageLimit} onChange={(e) => setForm({ ...form, usageLimit: e.target.value })} className="w-full border-2 border-black bg-white px-4 py-3 text-sm font-bold outline-none focus:bg-orange-50" required min={1} />
                 {formErrors.usageLimit && <p className="mt-1 text-xs font-bold text-red-600">{formErrors.usageLimit[0]}</p>}
               </div>
               <div>
                 <label className="mb-1 block text-sm font-bold">Min Purchase Amount (IDR)</label>
-                <input
-                  type="number"
-                  value={form.minPurchaseAmount}
-                  onChange={(e) => setForm({ ...form, minPurchaseAmount: e.target.value })}
-                  className="w-full border-2 border-black bg-white px-4 py-3 text-sm font-bold outline-none focus:bg-orange-50"
-                  min={0}
-                />
+                <input type="number" value={form.minPurchaseAmount} onChange={(e) => setForm({ ...form, minPurchaseAmount: e.target.value })} className="w-full border-2 border-black bg-white px-4 py-3 text-sm font-bold outline-none focus:bg-orange-50" min={0} />
                 {formErrors.minPurchaseAmount && <p className="mt-1 text-xs font-bold text-red-600">{formErrors.minPurchaseAmount[0]}</p>}
               </div>
               <div className="flex items-center gap-3">
                 <label className="text-sm font-bold">Active</label>
-                <button
-                  type="button"
-                  onClick={() => setForm({ ...form, isActive: !form.isActive })}
-                  className={`relative h-6 w-11 border-2 border-black transition-colors ${form.isActive ? "bg-green-300" : "bg-zinc-300"}`}
-                >
-                  <span
-                    className={`absolute top-0.5 h-4 w-4 border-2 border-black bg-white transition-transform ${form.isActive ? "translate-x-5" : "translate-x-0.5"}`}
-                  />
+                <button type="button" onClick={() => setForm({ ...form, isActive: !form.isActive })} className={`relative h-6 w-11 border-2 border-black transition-colors ${form.isActive ? "bg-green-300" : "bg-zinc-300"}`}>
+                  <span className={`absolute top-0.5 h-4 w-4 border-2 border-black bg-white transition-transform ${form.isActive ? "translate-x-5" : "translate-x-0.5"}`} />
                 </button>
               </div>
-
               <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="border-2 border-black bg-white px-4 py-2 text-sm font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex items-center gap-2 border-2 border-black bg-yellow-300 px-4 py-2 text-sm font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                <button type="button" onClick={() => setShowModal(false)} className="border-2 border-black bg-white px-4 py-2 text-sm font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none">Cancel</button>
+                <button type="submit" disabled={submitting} className="flex items-center gap-2 border-2 border-black bg-yellow-300 px-4 py-2 text-sm font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed">
                   {submitting ? "Saving..." : "Save"}
                 </button>
               </div>
