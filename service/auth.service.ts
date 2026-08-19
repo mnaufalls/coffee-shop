@@ -148,6 +148,26 @@ export async function changePassword(
   return { message: "Password changed successfully" };
 }
 
+export async function getProfile(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phoneNumber: true,
+      role: true,
+      createdAt: true,
+    },
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  return user;
+}
+
 export async function updateProfile(
   userId: string,
   input: { name?: string; phoneNumber?: string },

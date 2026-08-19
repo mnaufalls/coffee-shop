@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { ClipboardText, MagnifyingGlass, CaretLeft, CaretRight } from "@phosphor-icons/react";
+import { formatRupiah } from "@/lib/format";
+import type { Meta } from "@/types";
 
-interface Order {
+interface OwnerOrder {
   id: string;
   orderType: string;
   subtotal: string;
@@ -19,13 +21,6 @@ interface Order {
   orderDetails: { id: string; productId: string; productName: string; price: string; quantity: number; subtotal: string }[];
 }
 
-interface Meta {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-}
-
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-yellow-300",
   processing: "bg-blue-300",
@@ -34,16 +29,8 @@ const STATUS_STYLES: Record<string, string> = {
   refunded: "bg-gray-300",
 };
 
-function formatRupiah(value: number) {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
 export default function OwnerOrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<OwnerOrder[]>([]);
   const [meta, setMeta] = useState<Meta>({ page: 1, limit: 10, total: 0, totalPages: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -53,7 +40,6 @@ export default function OwnerOrdersPage() {
 
   useEffect(() => {
     let cancelled = false;
-
     async function load() {
       setIsLoading(true);
       setError("");
@@ -72,7 +58,6 @@ export default function OwnerOrdersPage() {
         if (!cancelled) setIsLoading(false);
       }
     }
-
     load();
     return () => { cancelled = true; };
   }, [page]);
@@ -96,27 +81,14 @@ export default function OwnerOrdersPage() {
         <p className="mt-1 text-sm text-zinc-600">View all orders across the system.</p>
       </header>
 
-      {error && (
-        <div className="border-2 border-black bg-red-300 p-4 text-sm font-bold">{error}</div>
-      )}
+      {error && <div className="border-2 border-black bg-red-300 p-4 text-sm font-bold">{error}</div>}
 
-      {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <MagnifyingGlass size={16} weight="bold" className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-          <input
-            type="text"
-            placeholder="Search by order ID or customer..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full border-2 border-black bg-white py-2 pl-9 pr-4 text-sm font-bold outline-none focus:bg-orange-50"
-          />
+          <input type="text" placeholder="Search by order ID or customer..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full border-2 border-black bg-white py-2 pl-9 pr-4 text-sm font-bold outline-none focus:bg-orange-50" />
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="border-2 border-black bg-white px-4 py-2 text-sm font-bold outline-none focus:bg-orange-50"
-        >
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="border-2 border-black bg-white px-4 py-2 text-sm font-bold outline-none focus:bg-orange-50">
           <option value="">All Status</option>
           <option value="pending">Pending</option>
           <option value="processing">Processing</option>
@@ -149,13 +121,9 @@ export default function OwnerOrdersPage() {
                 <tr key={order.id} className="border-b border-zinc-200 last:border-b-0 hover:bg-orange-50">
                   <td className="px-4 py-3 font-bold">{order.id.slice(0, 8)}...</td>
                   <td className="px-4 py-3 font-bold">{order.customer?.name ?? "Walk-in"}</td>
-                  <td className="px-4 py-3 font-bold">
-                    {new Date(order.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
-                  </td>
+                  <td className="px-4 py-3 font-bold">{new Date(order.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-block border-2 border-black px-2 py-0.5 text-xs font-black capitalize ${STATUS_STYLES[order.status] ?? "bg-gray-200"}`}>
-                      {order.status}
-                    </span>
+                    <span className={`inline-block border-2 border-black px-2 py-0.5 text-xs font-black capitalize ${STATUS_STYLES[order.status] ?? "bg-gray-200"}`}>{order.status}</span>
                   </td>
                   <td className="px-4 py-3 text-right font-black">{formatRupiah(Number(order.totalAmount))}</td>
                 </tr>
@@ -165,28 +133,15 @@ export default function OwnerOrdersPage() {
         </div>
       )}
 
-      {/* Pagination */}
       {meta.totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-sm font-bold">
-            Page {meta.page} of {meta.totalPages}
-          </p>
+          <p className="text-sm font-bold">Page {meta.page} of {meta.totalPages}</p>
           <div className="flex gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="flex items-center gap-1 border-2 border-black bg-white px-3 py-1.5 text-sm font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <CaretLeft size={14} weight="bold" />
-              Previous
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="flex items-center gap-1 border-2 border-black bg-white px-3 py-1.5 text-sm font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed">
+              <CaretLeft size={14} weight="bold" /> Previous
             </button>
-            <button
-              onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
-              disabled={page >= meta.totalPages}
-              className="flex items-center gap-1 border-2 border-black bg-white px-3 py-1.5 text-sm font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-              <CaretRight size={14} weight="bold" />
+            <button onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))} disabled={page >= meta.totalPages} className="flex items-center gap-1 border-2 border-black bg-white px-3 py-1.5 text-sm font-black shadow-[3px_3px_0_0_#000] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-50 disabled:cursor-not-allowed">
+              Next <CaretRight size={14} weight="bold" />
             </button>
           </div>
         </div>

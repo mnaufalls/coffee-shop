@@ -289,6 +289,74 @@ export async function getAdminOrders(page: number, limit: number) {
   };
 }
 
+export async function getMyOrders(userId: string) {
+  const orders = await prisma.order.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    include: {
+      orderDetails: {
+        select: {
+          id: true,
+          productId: true,
+          productName: true,
+          price: true,
+          quantity: true,
+          subtotal: true,
+        },
+      },
+    },
+  });
+
+  return orders.map((order) => ({
+    id: order.id,
+    orderType: order.orderType,
+    subtotal: order.subtotal.toString(),
+    discountAmount: order.discountAmount.toString(),
+    taxPercentage: order.taxPercentage.toString(),
+    taxAmount: order.taxAmount.toString(),
+    totalAmount: order.totalAmount.toString(),
+    status: order.status,
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+    orderDetails: order.orderDetails.map((detail) => ({
+      id: detail.id,
+      productId: detail.productId,
+      productName: detail.productName,
+      price: detail.price.toString(),
+      quantity: detail.quantity,
+      subtotal: detail.subtotal.toString(),
+    })),
+  }));
+}
+
+export async function getUserFavorites(userId: string) {
+  const orderDetails = await prisma.orderDetail.findMany({
+    where: { order: { userId } },
+    select: {
+      productId: true,
+      productName: true,
+      quantity: true,
+    },
+  });
+
+  const productMap: Record<string, { productId: string; productName: string; totalQuantity: number }> = {};
+
+  for (const detail of orderDetails) {
+    if (!productMap[detail.productId]) {
+      productMap[detail.productId] = {
+        productId: detail.productId,
+        productName: detail.productName,
+        totalQuantity: 0,
+      };
+    }
+    productMap[detail.productId].totalQuantity += detail.quantity;
+  }
+
+  return Object.values(productMap)
+    .sort((a, b) => b.totalQuantity - a.totalQuantity)
+    .slice(0, 5);
+}
+
 export async function updateOrderStatus(orderId: string, status: string, note: string | undefined, cashierId: string) {
   const existingOrder = await prisma.order.findUnique({
     where: { id: orderId },

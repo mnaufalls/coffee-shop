@@ -1,16 +1,5 @@
 import { useState } from "react";
-
-type Product = {
-  id: string;
-  name: string;
-  description: string;
-  price: string;
-  stock: number;
-  isAvailable: boolean;
-  imageUrl: string | null;
-  categoryId: string;
-  category: { id: string; name: string };
-};
+import type { Product } from "@/types";
 
 export function useProducts() {
   const [products, setProducts] = useState<Product[]>([]);
