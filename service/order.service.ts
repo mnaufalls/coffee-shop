@@ -65,7 +65,6 @@ export async function createOrder(input: CreateOrderInput) {
       products.map((product) => [product.id, product]),
     );
 
-    // Validate product existence and stock
     for (const item of parsed.items) {
       const product = productMap.get(item.productId);
 
@@ -106,7 +105,6 @@ export async function createOrder(input: CreateOrderInput) {
     let discountCents = 0;
     let voucherCode: string | null = null;
 
-    // Handle voucher
     if (parsed.voucherCode) {
       const voucher = await tx.voucher.findUnique({
         where: { code: parsed.voucherCode },
@@ -134,7 +132,6 @@ export async function createOrder(input: CreateOrderInput) {
       voucherCode = voucher.code;
     }
 
-    // Use pre-calculated discount if provided
     if (parsed.discountAmount !== undefined) {
       discountCents = Math.round(parsed.discountAmount * 100);
     }
@@ -144,7 +141,6 @@ export async function createOrder(input: CreateOrderInput) {
     let totalCents =
       subtotalCents - discountCents + taxCents;
 
-    // Use pre-calculated total if provided
     if (parsed.totalAmount !== undefined) {
       totalCents = Math.round(parsed.totalAmount * 100);
     }
@@ -175,4 +171,194 @@ export async function createOrder(input: CreateOrderInput) {
 
     return order;
   });
+}
+
+export async function getUserOrders(userId: string, page: number, limit: number) {
+  const [orders, total] = await Promise.all([
+    prisma.order.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * limit,
+      take: limit,
+      include: { orderDetails: true },
+    }),
+    prisma.order.count({ where: { userId } }),
+  ]);
+
+  return {
+    orders: orders.map((order) => ({
+      id: order.id,
+      orderType: order.orderType,
+      subtotal: order.subtotal.toString(),
+      discountAmount: order.discountAmount.toString(),
+      taxPercentage: order.taxPercentage.toString(),
+      taxAmount: order.taxAmount.toString(),
+      totalAmount: order.totalAmount.toString(),
+      status: order.status,
+      note: order.note ?? null,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      orderDetails: order.orderDetails.map((detail) => ({
+        id: detail.id,
+        productId: detail.productId,
+        productName: detail.productName,
+        price: detail.price.toString(),
+        quantity: detail.quantity,
+        subtotal: detail.subtotal.toString(),
+      })),
+    })),
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
+
+export async function getAdminOrders(page: number, limit: number) {
+  const [orders, total] = await Promise.all([
+    prisma.order.findMany({
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * limit,
+      take: limit,
+      include: {
+        orderDetails: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phoneNumber: true,
+          },
+        },
+        cashier: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    }),
+    prisma.order.count(),
+  ]);
+
+  return {
+    orders: orders.map((order) => ({
+      id: order.id,
+      orderType: order.orderType,
+      subtotal: order.subtotal.toString(),
+      discountAmount: order.discountAmount.toString(),
+      taxPercentage: order.taxPercentage.toString(),
+      taxAmount: order.taxAmount.toString(),
+      totalAmount: order.totalAmount.toString(),
+      status: order.status,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      customer: order.user
+        ? {
+            id: order.user.id,
+            name: order.user.name,
+            email: order.user.email,
+            phoneNumber: order.user.phoneNumber,
+          }
+        : null,
+      cashier: order.cashier
+        ? {
+            id: order.cashier.id,
+            name: order.cashier.name,
+            email: order.cashier.email,
+          }
+        : null,
+      orderDetails: order.orderDetails.map((detail) => ({
+        id: detail.id,
+        productId: detail.productId,
+        productName: detail.productName,
+        price: detail.price.toString(),
+        quantity: detail.quantity,
+        subtotal: detail.subtotal.toString(),
+      })),
+    })),
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
+
+export async function updateOrderStatus(orderId: string, status: string, note: string | undefined, cashierId: string) {
+  const existingOrder = await prisma.order.findUnique({
+    where: { id: orderId },
+  });
+
+  if (!existingOrder) {
+    throw new Error("Order not found");
+  }
+
+  const updatedOrder = await prisma.order.update({
+    where: { id: orderId },
+    data: {
+      status: status as any,
+      note,
+      cashierId,
+    },
+    include: {
+      orderDetails: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phoneNumber: true,
+        },
+      },
+      cashier: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  return {
+    id: updatedOrder.id,
+    orderType: updatedOrder.orderType,
+    subtotal: updatedOrder.subtotal.toString(),
+    discountAmount: updatedOrder.discountAmount.toString(),
+    taxPercentage: updatedOrder.taxPercentage.toString(),
+    taxAmount: updatedOrder.taxAmount.toString(),
+    totalAmount: updatedOrder.totalAmount.toString(),
+    status: updatedOrder.status,
+    note: updatedOrder.note,
+    createdAt: updatedOrder.createdAt,
+    updatedAt: updatedOrder.updatedAt,
+    customer: updatedOrder.user
+      ? {
+          id: updatedOrder.user.id,
+          name: updatedOrder.user.name,
+          email: updatedOrder.user.email,
+          phoneNumber: updatedOrder.user.phoneNumber,
+        }
+      : null,
+    cashier: updatedOrder.cashier
+      ? {
+          id: updatedOrder.cashier.id,
+          name: updatedOrder.cashier.name,
+          email: updatedOrder.cashier.email,
+        }
+      : null,
+    orderDetails: updatedOrder.orderDetails.map((detail) => ({
+      id: detail.id,
+      productId: detail.productId,
+      productName: detail.productName,
+      price: detail.price.toString(),
+      quantity: detail.quantity,
+      subtotal: detail.subtotal.toString(),
+    })),
+  };
 }

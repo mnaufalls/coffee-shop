@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { prisma } from "@/lib/prisma";
+import { updateOrderStatus } from "@/service/order.service";
 
 type RouteContext = {
   params: Promise<{
@@ -67,103 +67,18 @@ export async function PATCH(
       );
     }
 
-    const existingOrder = await prisma.order.findUnique({
-      where: {
-        id,
-      },
-    });
-
-    if (!existingOrder) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Order not found",
-        },
-        { status: 404 },
-      );
-    }
-
-    const updatedOrder = await prisma.order.update({
-      where: {
-        id,
-      },
-      data: {
-        status: result.data.status,
-        note: result.data.note,
-        cashierId: user.userId,
-      },
-      include: {
-        orderDetails: true,
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phoneNumber: true,
-          },
-        },
-        cashier: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    });
+    const updatedOrder = await updateOrderStatus(
+      id,
+      result.data.status,
+      result.data.note,
+      user.userId
+    );
 
     return NextResponse.json({
       success: true,
       message: "Order updated successfully",
       data: {
-        order: {
-          id: updatedOrder.id,
-          orderType: updatedOrder.orderType,
-          subtotal: updatedOrder.subtotal.toString(),
-          discountAmount:
-            updatedOrder.discountAmount.toString(),
-          taxPercentage:
-            updatedOrder.taxPercentage.toString(),
-          taxAmount:
-            updatedOrder.taxAmount.toString(),
-          totalAmount:
-            updatedOrder.totalAmount.toString(),
-          status: updatedOrder.status,
-          note: updatedOrder.note,
-          createdAt: updatedOrder.createdAt,
-          updatedAt: updatedOrder.updatedAt,
-
-          customer: updatedOrder.user
-            ? {
-                id: updatedOrder.user.id,
-                name: updatedOrder.user.name,
-                email: updatedOrder.user.email,
-                phoneNumber:
-                  updatedOrder.user.phoneNumber,
-              }
-            : null,
-
-          cashier: updatedOrder.cashier
-            ? {
-                id: updatedOrder.cashier.id,
-                name: updatedOrder.cashier.name,
-                email: updatedOrder.cashier.email,
-              }
-            : null,
-
-          orderDetails:
-            updatedOrder.orderDetails.map(
-              (detail) => ({
-                id: detail.id,
-                productId: detail.productId,
-                productName: detail.productName,
-                price: detail.price.toString(),
-                quantity: detail.quantity,
-                subtotal:
-                  detail.subtotal.toString(),
-              }),
-            ),
-        },
+        order: updatedOrder,
       },
     });
   } catch (error) {
