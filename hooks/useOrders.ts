@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import type { Order, OrderStatus } from "@/components/cashier/order-card";
 
 type UseOrdersOptions = {
@@ -14,7 +14,7 @@ export function useOrders(options: UseOrdersOptions = {}) {
   const [totalPages, setTotalPages] = useState(1);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  async function fetchOrders(page: number) {
+  const fetchOrders = useCallback(async (page: number) => {
     try {
       setError("");
       setIsLoading(true);
@@ -40,44 +40,43 @@ export function useOrders(options: UseOrdersOptions = {}) {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [pageSize]);
 
-  async function updateOrderStatus(
-    orderId: string,
-    status: OrderStatus,
-    note?: string
-  ) {
-    try {
-      setUpdatingId(orderId);
-      setError("");
+  const updateOrderStatus = useCallback(
+    async (orderId: string, status: OrderStatus, note?: string) => {
+      try {
+        setUpdatingId(orderId);
+        setError("");
 
-      const response = await fetch(`/api/admin/orders/${orderId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ status, note }),
-      });
+        const response = await fetch(`/api/admin/orders/${orderId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({ status, note }),
+        });
 
-      const result = await response.json();
+        const result = await response.json();
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.message ?? "Failed to update order");
+        if (!response.ok || !result.success) {
+          throw new Error(result.message ?? "Failed to update order");
+        }
+
+        setOrders((current) =>
+          current.map((order) =>
+            order.id === orderId ? result.data.order : order
+          )
+        );
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to update order");
+        throw err;
+      } finally {
+        setUpdatingId(null);
       }
-
-      setOrders((current) =>
-        current.map((order) =>
-          order.id === orderId ? result.data.order : order
-        )
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update order");
-      throw err;
-    } finally {
-      setUpdatingId(null);
-    }
-  }
+    },
+    []
+  );
 
   return {
     orders,

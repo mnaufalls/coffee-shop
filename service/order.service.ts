@@ -254,6 +254,7 @@ export async function getAdminOrders(page: number, limit: number) {
       taxAmount: order.taxAmount.toString(),
       totalAmount: order.totalAmount.toString(),
       status: order.status,
+      note: order.note ?? null,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
       customer: order.user
@@ -360,10 +361,34 @@ export async function getUserFavorites(userId: string) {
 export async function updateOrderStatus(orderId: string, status: string, note: string | undefined, cashierId: string) {
   const existingOrder = await prisma.order.findUnique({
     where: { id: orderId },
+    include: { orderDetails: true },
   });
 
   if (!existingOrder) {
     throw new Error("Order not found");
+  }
+
+  if (status === "completed" && existingOrder.status !== "completed") {
+    await prisma.$transaction(async (tx) => {
+      for (const detail of existingOrder.orderDetails) {
+        await tx.product.update({
+          where: { id: detail.productId },
+          data: { stock: { decrement: detail.quantity } },
+        });
+      }
+
+      if (existingOrder.voucherCode) {
+        const voucher = await tx.voucher.findUnique({
+          where: { code: existingOrder.voucherCode },
+        });
+        if (voucher && voucher.usageCount < voucher.usageLimit) {
+          await tx.voucher.update({
+            where: { id: voucher.id },
+            data: { usageCount: { increment: 1 } },
+          });
+        }
+      }
+    });
   }
 
   const updatedOrder = await prisma.order.update({

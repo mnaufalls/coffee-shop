@@ -118,27 +118,6 @@ export async function processWebhook(notification: MidtransNotification) {
         data: { status: orderStatus },
       });
     }
-
-    if (orderStatus === "processing") {
-      for (const detail of order.orderDetails) {
-        await tx.product.update({
-          where: { id: detail.productId },
-          data: { stock: { decrement: detail.quantity } },
-        });
-      }
-
-      if (order.voucherCode) {
-        const voucher = await tx.voucher.findUnique({
-          where: { code: order.voucherCode },
-        });
-        if (voucher && voucher.usageCount < voucher.usageLimit) {
-          await tx.voucher.update({
-            where: { id: voucher.id },
-            data: { usageCount: { increment: 1 } },
-          });
-        }
-      }
-    }
   });
 
   return { success: true, message: "Webhook processed successfully" };

@@ -116,11 +116,24 @@ export default function CashierProductsPage() {
   async function handleSaveProduct() {
     setIsSaving(true);
     try {
+      const priceNum = Number(productPrice);
+      const stockNum = Number(productStock);
+
+      if (isNaN(priceNum) || priceNum <= 0) {
+        setProductsError("Price must be a positive number");
+        return;
+      }
+
+      if (isNaN(stockNum) || stockNum < 0) {
+        setProductsError("Stock must be a non-negative number");
+        return;
+      }
+
       const data = {
         name: productName,
         description: productDesc,
-        price: productPrice,
-        stock: Number(productStock),
+        price: priceNum,
+        stock: stockNum,
         categoryId: productCategoryId,
         imageUrl: productImage || null,
       };

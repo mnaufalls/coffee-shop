@@ -23,6 +23,6 @@ export async function getProducts(search?: string, categoryId?: string): Promise
 export async function getProduct(id: string): Promise<Product | null> {
   const response = await fetch(`${BASE_URL}/api/products/${id}`, { cache: "no-store" });
   if (!response.ok) return null;
-  const result: { data: Product } = await response.json();
-  return result.data;
+  const result: { data: { product: Product } } = await response.json();
+  return result.data.product;
 }
